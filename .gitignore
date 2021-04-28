@@ -141,3 +141,6 @@ log_and_results/
 .vscode/
 .idea/
 *.idea
+
+/data
+/results
