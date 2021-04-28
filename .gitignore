@@ -137,6 +137,7 @@ log_and_results/
 *.csv
 *.tsv
 *.gz
+*.fasta
 
 .vscode/
 .idea/
