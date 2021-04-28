@@ -10,6 +10,30 @@ from sklearn.ensemble import GradientBoostingClassifier
 import xgboost
 from xgboost import XGBClassifier
 
+
+def table2fasta(table, file_out):
+    file = open(file_out, 'w')
+    for index, row in table.iterrows():
+        file.write('>{0}\n'.format(row['id']))
+        file.write('{0}\n'.format(row['seq']))
+    file.close()
+    print('Write finished')
+    
+#氨基酸字典(X未知项用于数据对齐)
+prot_dict = dict(
+                    A=1,  R=2,  N=3,  D=4,  C=5,  E=6,  Q=7,  G=8,  H=9,  O=10, I=11, L=12, 
+                    K=13, M=14, F=15, P=16, U=17, S=18, T=19, W=20, Y=21, V=22, B=23, Z=24, X=0
+                )
+
+# one-hot 编码
+def dna_onehot(Xdna):
+    listtmp = list()
+    for index, row in Xdna.iterrows():
+        row = [prot_dict[x] if x in prot_dict else x for x in row['seq']]
+        listtmp.append(row)
+    return pd.DataFrame(listtmp)
+
+
 def lrmain(X_train_std, Y_train, X_test_std, Y_test):
     logreg = linear_model.LogisticRegression( solver = 'liblinear')
     logreg.fit(X_train_std, Y_train)
