@@ -142,6 +142,8 @@ log_and_results/
 .vscode/
 .idea/
 *.idea
+*.dmnd
 
 /data
 /results
+/temp
