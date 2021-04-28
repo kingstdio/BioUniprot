@@ -35,7 +35,7 @@ def dna_onehot(Xdna):
 
 
 def lrmain(X_train_std, Y_train, X_test_std, Y_test):
-    logreg = linear_model.LogisticRegression(solver = 'liblinear', n_jobs=32)
+    logreg = linear_model.LogisticRegression( solver = 'liblinear')
     logreg.fit(X_train_std, Y_train)
     predict = logreg.predict(X_test_std)
     lrpredpro = logreg.predict_proba(X_test_std)
@@ -44,7 +44,7 @@ def lrmain(X_train_std, Y_train, X_test_std, Y_test):
     return groundtruth, predict, predictprob
 
 def svmmain(X_train_std, Y_train, X_test_std, Y_test):
-    svcmodel = SVC(probability=True, kernel='rbf', tol=0.001, n_jobs=32)
+    svcmodel = SVC(probability=True, kernel='rbf', tol=0.001)
     svcmodel.fit(X_train_std, Y_train.ravel(), sample_weight=None)
     predict = svcmodel.predict(X_test_std)
     predictprob =svcmodel.predict_proba(X_test_std)
@@ -61,7 +61,7 @@ def xgmain(X_train_std, Y_train, X_test_std, Y_test):
     return groundtruth, predict, predictprob[:,1]
 
 def dtmain(X_train_std, Y_train, X_test_std, Y_test):
-    model = tree.DecisionTreeClassifier(n_jobs=32)
+    model = tree.DecisionTreeClassifier()
     model.fit(X_train_std, Y_train.ravel())
     predict = model.predict(X_test_std)
     predictprob = model.predict_proba(X_test_std)
@@ -69,7 +69,7 @@ def dtmain(X_train_std, Y_train, X_test_std, Y_test):
     return groundtruth, predict, predictprob[:,1]
 
 def rfmain(X_train_std, Y_train, X_test_std, Y_test):
-    model = RandomForestClassifier(oob_score=True, random_state=10, n_jobs=32)
+    model = RandomForestClassifier(oob_score=True, random_state=10)
     model.fit(X_train_std, Y_train.ravel())
     predict = model.predict(X_test_std)
     predictprob = model.predict_proba(X_test_std)
@@ -77,7 +77,7 @@ def rfmain(X_train_std, Y_train, X_test_std, Y_test):
     return groundtruth, predict, predictprob[:,1]
 
 def gbdtmain(X_train_std, Y_train, X_test_std, Y_test):
-    model = GradientBoostingClassifier(random_state=10, n_jobs=32)
+    model = GradientBoostingClassifier(random_state=10)
     model.fit(X_train_std, Y_train.ravel())
     predict = model.predict(X_test_std)
     predictprob = model.predict_proba(X_test_std)
