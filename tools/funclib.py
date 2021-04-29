@@ -10,6 +10,9 @@ from sklearn.ensemble import GradientBoostingClassifier
 import xgboost
 from xgboost import XGBClassifier
 
+import pandas as pd
+import numpy as np
+
 
 def table2fasta(table, file_out):
     file = open(file_out, 'w')
