@@ -115,4 +115,25 @@ def evaluate(baslineName, X_train_std, Y_train, X_test_std, Y_test):
     npv = tn/(fn+tn+1.4E-45)
     
     print(baslineName, '\t\t%f' %acc,'\t%f'% precision,'\t\t%f'%npv,'\t%f'% recall,'\t%f'% f1, '\t%f'% auroc,'\t%f'% auprc, '\t', 'tp:',tp,'fp:',fp,'fn:',fn,'tn:',tn)
-    
+
+
+def static_interval(data, span):
+    """[summary]
+
+    Args:
+        data ([dataframe]): [需要统计的数据]
+        span ([int]): [统计的间隔]
+
+    Returns:
+        [type]: [完成的统计列表]]
+    """
+    res = []
+    count = 0
+    for i in range(int(len(data)/span) + 1):
+        lable = str(i*span) + '-' + str((i+1)* span -1 )
+        num = data[(data.length>=(i*span)) & (data.length<(i+1)*span)]['count'].sum()
+        res += [[lable, num]]
+    return res
+        
+
+        
