@@ -117,7 +117,12 @@ def unirep(train, test):
 
 
 if __name__ =="__main__":
-    train,test = split_train_test()
+    file_train = r'./tasks/task1/data/deepre/train_1.tsv'
+    file_test = r'./tasks/task1/data/deepre/test_1.tsv'
+
+    train = pd.read_csv(file_train)
+
+    # train,test = split_train_test()
     trainset = train[['id', 'label','seq', 'seqlength']].reset_index(drop=True)
     testset = test[['id', 'label','seq', 'seqlength']].reset_index(drop=True)
     X_train_res, X_test_res = unirep(train=trainset, test=testset)
