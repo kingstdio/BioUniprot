@@ -56,7 +56,7 @@ def svmmain(X_train_std, Y_train, X_test_std, Y_test):
 
     
 def xgmain(X_train_std, Y_train, X_test_std, Y_test):
-    model = XGBClassifier(objective='binary:logistic', random_state=42, use_label_encoder=False, n_jobs=32)
+    model = XGBClassifier(objective='binary:logistic', random_state=42, use_label_encoder=False, n_jobs=32, eval_metric='mlogloss')
     model.fit(X_train_std, Y_train.ravel())
     predict = model.predict(X_test_std)
     predictprob = model.predict_proba(X_test_std)
