@@ -138,6 +138,7 @@ log_and_results/
 *.tsv
 *.gz
 *.fasta
+*.npy
 
 .vscode/
 .idea/

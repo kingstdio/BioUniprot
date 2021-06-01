@@ -12,7 +12,22 @@ from xgboost import XGBClassifier
 
 import pandas as pd
 import numpy as np
+import os
 
+
+table_head = [  'id', 
+                'name',
+                'isemzyme',
+                'isMultiFunctional', 
+                'functionCounts', 
+                'ec_number', 
+                'ec_specific_level',
+                'date_integraged',
+                'date_sequence_update',
+                'date_annotation_update',
+                'seq', 
+                'seqlength'
+            ]
 
 def table2fasta(table, file_out):
     file = open(file_out, 'w')
@@ -38,7 +53,7 @@ def dna_onehot(Xdna):
 
 
 def lrmain(X_train_std, Y_train, X_test_std, Y_test):
-    logreg = linear_model.LogisticRegression( solver = 'liblinear')
+    logreg = linear_model.LogisticRegression(solver = 'lbfgs', n_jobs=-2)
     logreg.fit(X_train_std, Y_train)
     predict = logreg.predict(X_test_std)
     lrpredpro = logreg.predict_proba(X_test_std)
@@ -47,7 +62,7 @@ def lrmain(X_train_std, Y_train, X_test_std, Y_test):
     return groundtruth, predict, predictprob
 
 def svmmain(X_train_std, Y_train, X_test_std, Y_test):
-    svcmodel = SVC(probability=True, kernel='rbf', tol=0.001)
+    svcmodel = SVC(probability=True, kernel='rbf', tol=0.001, n_jobs=-2)
     svcmodel.fit(X_train_std, Y_train.ravel(), sample_weight=None)
     predict = svcmodel.predict(X_test_std)
     predictprob =svcmodel.predict_proba(X_test_std)
@@ -56,7 +71,7 @@ def svmmain(X_train_std, Y_train, X_test_std, Y_test):
 
     
 def xgmain(X_train_std, Y_train, X_test_std, Y_test):
-    model = XGBClassifier(objective='binary:logistic', random_state=42, use_label_encoder=False, n_jobs=32, eval_metric='mlogloss')
+    model = XGBClassifier(objective='binary:logistic', random_state=42, use_label_encoder=False, n_jobs=-2, eval_metric='mlogloss')
     model.fit(X_train_std, Y_train.ravel())
     predict = model.predict(X_test_std)
     predictprob = model.predict_proba(X_test_std)
@@ -72,7 +87,7 @@ def dtmain(X_train_std, Y_train, X_test_std, Y_test):
     return groundtruth, predict, predictprob[:,1]
 
 def rfmain(X_train_std, Y_train, X_test_std, Y_test):
-    model = RandomForestClassifier(oob_score=True, random_state=10)
+    model = RandomForestClassifier(oob_score=True, random_state=10, n_jobs=-2)
     model.fit(X_train_std, Y_train.ravel())
     predict = model.predict(X_test_std)
     predictprob = model.predict_proba(X_test_std)
@@ -116,7 +131,13 @@ def evaluate(baslineName, X_train_std, Y_train, X_test_std, Y_test):
     
     print(baslineName, '\t\t%f' %acc,'\t%f'% precision,'\t\t%f'%npv,'\t%f'% recall,'\t%f'% f1, '\t%f'% auroc,'\t%f'% auprc, '\t', 'tp:',tp,'fp:',fp,'fn:',fn,'tn:',tn)
 
-
+def run_baseline(X_train, Y_train, X_test, Y_test):
+    methods=['lr', 'xg', 'dt', 'rf', 'gbdt']
+    print('baslineName', '\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
+    for method in methods:
+        evaluate(method, X_train, Y_train, X_test, Y_test)
+    
+    
 def static_interval(data, span):
     """[summary]
 
@@ -137,3 +158,18 @@ def static_interval(data, span):
         
 
         
+def getblast(train, test):
+    
+    table2fasta(train, '/tmp/train.fasta')
+    table2fasta(test, '/tmp/test.fasta')
+    
+    cmd1 = r'diamond makedb --in /tmp/train.fasta -d /tmp/train.dmnd'
+    cmd2 = r'diamond blastp -d /tmp/train.dmnd  -q  /tmp/test.fasta -o /tmp/test_fasta_results.tsv -b5 -c1 -k 1'
+    cmd3 = r'rm -rf /tmp/*.fasta /tmp/*.dmnd /tmp/*.tsv'
+    print(cmd1)
+    os.system(cmd1)
+    print(cmd2)
+    os.system(cmd2)
+    res_data = pd.read_csv('/tmp/test_fasta_results.tsv', sep='\t', names=['id', 'sseqid', 'pident', 'length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore'])
+    os.system(cmd3)
+    return res_data

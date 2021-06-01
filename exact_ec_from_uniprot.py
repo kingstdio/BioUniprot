@@ -20,10 +20,12 @@ def read_file_from_gzip(file_in_path, file_out_path, extract_type):
         extract_type ([string]): [抽取数据的类型：with_ec, without_ec, full]]
     """
     table_head = [  'id', 
+                    'name',
                     'isemzyme',
                     'isMultiFunctional', 
                     'functionCounts', 
                     'ec_number', 
+                    'ec_specific_level',
                     'date_integraged',
                     'date_sequence_update',
                     'date_annotation_update',
@@ -73,11 +75,37 @@ def process_record(record, extract_type='with_ec'):
     isEnzyme = 'EC=' in description
     isMultiFunctional = False
     functionCounts = 1
-
+    ec_specific_level =0 
     if isEnzyme:
         ec = str(re.findall(r"EC=[0-9,.\-;]*",description)).replace('EC=','').replace('\'','').replace(']','').replace('[','').replace(';','')
         isMultiFunctional = ',' in ec
         functionCounts = ec.count(',') + 1
+
+        #大于三级EC号的被认为是酶，小于三级的不认为是酶
+        # - 单功能酶
+        if not isMultiFunctional:
+            levelCount = ec.count('-')
+            ec_specific_level = 4-levelCount
+            if levelCount>1:
+                isEnzyme = False
+        else: # -多功能酶
+            ecarray = ec.split(',')
+            for subec in ecarray:
+                if subec.count('-') ==0:
+                    isEnzyme = True
+                    ec_specific_level = 4
+                    break
+                elif subec.count('-') ==1:
+                    isEnzyme = True
+                    ec_specific_level = 3
+                    break
+                else:
+                    isEnzyme=False
+                    
+                    if (4- subec.count('-')) > ec_specific_level:
+                        ec_specific_level = (4- subec.count('-'))
+                    
+
     else:
         ec = '-'
     
@@ -88,7 +116,7 @@ def process_record(record, extract_type='with_ec'):
     date_sequence_update = record.annotations.get('date_last_sequence_update')
     date_annotation_update = record.annotations.get('date_last_annotation_update')
     seqlength = len(seq)   
-    res = [id, isEnzyme, isMultiFunctional, functionCounts, ec, date_integraged, date_sequence_update, date_annotation_update,  seq, seqlength]
+    res = [id, name, isEnzyme, isMultiFunctional, functionCounts, ec,ec_specific_level, date_integraged, date_sequence_update, date_annotation_update,  seq, seqlength]
 
     if extract_type == 'full':
         return res
