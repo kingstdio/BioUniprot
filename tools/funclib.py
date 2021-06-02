@@ -62,7 +62,7 @@ def lrmain(X_train_std, Y_train, X_test_std, Y_test):
     return groundtruth, predict, predictprob
 
 def svmmain(X_train_std, Y_train, X_test_std, Y_test):
-    svcmodel = SVC(probability=True, kernel='rbf', tol=0.001, n_jobs=-2)
+    svcmodel = SVC(probability=True, kernel='rbf', tol=0.001)
     svcmodel.fit(X_train_std, Y_train.ravel(), sample_weight=None)
     predict = svcmodel.predict(X_test_std)
     predictprob =svcmodel.predict_proba(X_test_std)
