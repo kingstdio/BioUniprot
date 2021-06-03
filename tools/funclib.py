@@ -159,15 +159,7 @@ def static_interval(data, span):
 
         
 def getblast(train, test):
-    """[两组数据进行blast比对]
-
-    Args:
-        train ([DataFrame]): [被比对的数据]
-        test ([DataFrame]): [比对数据]
-
-    Returns:
-        [DataFrame]: [description]
-    """
+    
     table2fasta(train, '/tmp/train.fasta')
     table2fasta(test, '/tmp/test.fasta')
     
@@ -181,20 +173,3 @@ def getblast(train, test):
     res_data = pd.read_csv('/tmp/test_fasta_results.tsv', sep='\t', names=['id', 'sseqid', 'pident', 'length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore'])
     os.system(cmd3)
     return res_data
-
-
-def evaluateBlast(res_data, trainset, testset, matchitem='ec_number'):
-
-    id_map_ec = trainset[['id', matchitem]].append(testset[['id', matchitem]],ignore_index=True)
-    id_ec_dict = {v: k for v,k in zip( id_map_ec['id'], id_map_ec[matchitem])} 
-    res_data['is_match']=res_data.apply(lambda x: (id_ec_dict.get(x['id'])== id_ec_dict.get(x['sseqid'])), axis=1)
-
-
-    correct = sum(res_data['is_match'])
-    find  = len(res_data)
-    total = len(testset)
-    print('Total query records are: {0}'.format(total))
-    print('Matched records are: {0}'.format(find))
-    print('Accuracy: {0}({1}/{2})'.format(correct/total, correct, total))
-    print('Pricision: {0}({1}/{2})'.format(correct/find, correct, find))
-    print('Recall: {0}({1}/{2})'.format(find/total, find, total))
