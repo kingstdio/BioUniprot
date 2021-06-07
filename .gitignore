@@ -139,15 +139,19 @@ log_and_results/
 *.gz
 *.fasta
 *.npy
+*.pyc
 
 .vscode/
 .idea/
 *.idea
 *.dmnd
+*DS_Store
 
 /data
 /results
 /temp
 /baselines/slice
+/baselines/Tree_Extreme_Classifiers
+/baselines/deepec
 
 diamond
