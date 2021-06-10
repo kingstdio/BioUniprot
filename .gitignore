@@ -146,6 +146,7 @@ log_and_results/
 *.idea
 *.dmnd
 *DS_Store
+*.txt
 
 /data
 /results
