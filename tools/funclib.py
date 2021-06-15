@@ -173,3 +173,13 @@ def getblast(train, test):
     res_data = pd.read_csv('/tmp/test_fasta_results.tsv', sep='\t', names=['id', 'sseqid', 'pident', 'length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore'])
     os.system(cmd3)
     return res_data
+
+def caculateMetrix_1(baselineName,tp, fp, tn,fn):
+    sampleNum = tp+fp+tn+fn
+    accuracy = (tp+tn)/sampleNum
+    precision = tp/(tp+fp)
+    npv = tn/(tn+fn)
+    recall = tp/(tp+fn)
+    f1 = 2 * (precision * recall) / (precision + recall)
+    print('baslineName', '\t', 'accuracy','\t','precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
+    print('{0} \t {1:.6f}  \t{2:.6f} \t\t {3:.6f}  \t{4:.6f}\t {5:.6f}\t\t \t \t \t tp:{6}  fp:{7}  fn:{8}  tn:{9}'.format(baselineName,accuracy, precision, npv, recall, f1, tp,fp,fn,tn))
