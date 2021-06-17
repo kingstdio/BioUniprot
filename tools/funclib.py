@@ -136,6 +136,7 @@ def run_baseline(X_train, Y_train, X_test, Y_test):
     print('baslineName', '\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
     for method in methods:
         evaluate(method, X_train, Y_train, X_test, Y_test)
+        
     
     
 def static_interval(data, span):
