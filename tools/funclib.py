@@ -9,6 +9,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
 import xgboost
 from xgboost import XGBClassifier
+from tqdm import tqdm
 
 import pandas as pd
 import numpy as np
@@ -184,3 +185,68 @@ def caculateMetrix_1(baselineName,tp, fp, tn,fn):
     f1 = 2 * (precision * recall) / (precision + recall)
     print('baslineName', '\t', 'accuracy','\t','precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
     print('{0} \t {1:.6f}  \t{2:.6f} \t\t {3:.6f}  \t{4:.6f}\t {5:.6f}\t\t \t \t \t tp:{6}  fp:{7}  fn:{8}  tn:{9}'.format(baselineName,accuracy, precision, npv, recall, f1, tp,fp,fn,tn))
+
+
+
+def get_integrated_results(res_data, train, test, baslineName):
+    # 给比对结果添加标签
+    isEmzyme_dict = {v: k for k,v in zip(train.isemzyme, train.id )} 
+    res_data['diamoion_pred'] = res_data['sseqid'].apply(lambda x: isEmzyme_dict.get(x))
+
+    blast_res = pd.DataFrame
+    blast_res = res_data[['id','pident','bitscore', 'diamoion_pred']]
+    
+    X_train = train.iloc[:,12:]
+    X_test = test.iloc[:,12:]
+    Y_train = train.iloc[:,2].astype('int')
+    Y_test = test.iloc[:,2].astype('int')
+    X_train = np.array(X_train)
+    X_test = np.array(X_test)
+    Y_train = np.array(Y_train).flatten()
+    Y_test = np.array(Y_test).flatten()
+    
+    if baslineName == 'lr':
+        groundtruth, predict, predictprob = lrmain (X_train, Y_train, X_test, Y_test)
+    elif baslineName == 'svm':
+        groundtruth, predict, predictprob = svmmain(X_train, Y_train, X_test, Y_test)
+    elif baslineName =='xg':
+        groundtruth, predict, predictprob = xgmain(X_train, Y_train, X_test, Y_test)
+    elif baslineName =='dt':
+        groundtruth, predict, predictprob = dtmain(X_train, Y_train, X_test, Y_test)
+    elif baslineName =='rf':
+        groundtruth, predict, predictprob = rfmain(X_train, Y_train, X_test, Y_test)
+    elif baslineName =='gbdt':
+        groundtruth, predict, predictprob = gbdtmain(X_train, Y_train, X_test, Y_test)
+    else:
+        print('Baseline Name Errror')
+    
+    test_res = pd.DataFrame()
+    test_res[['id', 'name','isemzyme','ec_number']] = test[['id','name','isemzyme','ec_number']]
+    test_res.reset_index(drop=True, inplace=True)
+
+    #拼合比对结果到测试集
+    test_merge_res = pd.merge(test_res, blast_res, on='id', how='left')
+    test_merge_res['xg_pred'] = predict
+    test_merge_res['xg_pred_prob'] = predictprob
+    test_merge_res['groundtruth'] = groundtruth
+    
+    test_merge_res['final_pred'] = ''
+    for index, row in tqdm( test_merge_res.iterrows()):
+        if (row.diamoion_pred == True) | (row.diamoion_pred == False):
+            test_merge_res['final_pred'][index] = row.diamoion_pred
+        else:
+            test_merge_res['final_pred'][index] = row.xg_pred
+
+    # 计算指标
+    tp = len(test_merge_res[test_merge_res.groundtruth & test_merge_res.final_pred])
+    fp = len(test_merge_res[(test_merge_res.groundtruth ==False) & (test_merge_res.final_pred)])
+    tn = len(test_merge_res[(test_merge_res.groundtruth ==False) & (test_merge_res.final_pred ==False)])
+    fn = len(test_merge_res[(test_merge_res.groundtruth ) & (test_merge_res.final_pred == False)])
+    caculateMetrix_1(baslineName,tp, fp, tn,fn)
+
+
+def run_integrated(res_data, train, test):
+    methods=['xg', 'dt', 'rf', 'gbdt']
+    print('baslineName', '\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
+    for method in methods:
+        get_integrated_results(res_data, train, test, method)
