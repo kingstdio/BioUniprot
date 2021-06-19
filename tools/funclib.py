@@ -231,7 +231,7 @@ def get_integrated_results(res_data, train, test, baslineName):
     test_merge_res['groundtruth'] = groundtruth
     
     test_merge_res['final_pred'] = ''
-    for index, row in tqdm( test_merge_res.iterrows()):
+    for index, row in test_merge_res.iterrows():
         if (row.diamoion_pred == True) | (row.diamoion_pred == False):
             test_merge_res['final_pred'][index] = row.diamoion_pred
         else:
@@ -246,7 +246,7 @@ def get_integrated_results(res_data, train, test, baslineName):
 
 
 def run_integrated(res_data, train, test):
-    methods=['xg', 'dt', 'rf', 'gbdt']
+    methods=['lr','xg', 'dt', 'rf', 'gbdt']
     print('baslineName', '\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
     for method in methods:
         get_integrated_results(res_data, train, test, method)

@@ -147,6 +147,8 @@ log_and_results/
 *.dmnd
 *DS_Store
 *.txt
+*.xlsx
+
 
 /data
 /results
