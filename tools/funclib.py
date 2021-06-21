@@ -183,7 +183,6 @@ def caculateMetrix_1(baselineName,tp, fp, tn,fn):
     npv = tn/(tn+fn)
     recall = tp/(tp+fn)
     f1 = 2 * (precision * recall) / (precision + recall)
-    print('baslineName', '\t', 'accuracy','\t','precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
     print('{0} \t {1:.6f}  \t{2:.6f} \t\t {3:.6f}  \t{4:.6f}\t {5:.6f}\t\t \t \t \t tp:{6}  fp:{7}  fn:{8}  tn:{9}'.format(baselineName,accuracy, precision, npv, recall, f1, tp,fp,fn,tn))
 
 
@@ -233,9 +232,11 @@ def get_integrated_results(res_data, train, test, baslineName):
     test_merge_res['final_pred'] = ''
     for index, row in test_merge_res.iterrows():
         if (row.diamoion_pred == True) | (row.diamoion_pred == False):
-            test_merge_res['final_pred'][index] = row.diamoion_pred
+            with pd.option_context('mode.chained_assignment', None):
+                test_merge_res['final_pred'][index] = row.diamoion_pred
         else:
-            test_merge_res['final_pred'][index] = row.xg_pred
+            with pd.option_context('mode.chained_assignment', None):
+                test_merge_res['final_pred'][index] = row.xg_pred
 
     # 计算指标
     tp = len(test_merge_res[test_merge_res.groundtruth & test_merge_res.final_pred])
@@ -247,6 +248,6 @@ def get_integrated_results(res_data, train, test, baslineName):
 
 def run_integrated(res_data, train, test):
     methods=['lr','xg', 'dt', 'rf', 'gbdt']
-    print('baslineName', '\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
+    print('baslineName', '\t\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
     for method in methods:
         get_integrated_results(res_data, train, test, method)
