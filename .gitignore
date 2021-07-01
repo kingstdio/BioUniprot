@@ -148,6 +148,7 @@ log_and_results/
 *DS_Store
 *.txt
 *.xlsx
+*.bin
 
 
 /data
@@ -158,3 +159,4 @@ log_and_results/
 /baselines/deepec
 
 diamond
+*temp
