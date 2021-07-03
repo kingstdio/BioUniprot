@@ -150,7 +150,7 @@ log_and_results/
 *.xlsx
 *.bin
 model/
-
+scratch/
 
 
 /data
