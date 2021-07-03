@@ -70,6 +70,9 @@ def process_record(record, extract_type='with_ec'):
     Returns:
         [type]: [description]
     """
+    
+    if record.id == 'O32462':
+        print(record.description)
 
     description = record.description
     isEnzyme = 'EC=' in description

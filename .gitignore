@@ -149,6 +149,8 @@ log_and_results/
 *.txt
 *.xlsx
 *.bin
+model/
+
 
 
 /data
