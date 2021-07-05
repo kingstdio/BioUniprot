@@ -205,6 +205,23 @@ def train_ec_slice(trainX, trainY, modelPath):
    os.system(cmd)
    print('train finished')
 
+#region 需要写fasta的dataFame格式
+def save_train2fasta(dataset, file_out):
+    """[summary]
+    Args:
+        dataset ([DataFrame]): 需要写fasta的dataFame格式[id, seq]
+        file_out ([type]): [description]
+    """
+    if ~os.path.exists(file_out):
+        file = open(file_out, 'w')
+        for index, row in dataset.iterrows():
+            file.write('>{0}\n'.format(row['id']))
+            file.write('{0}\n'.format(row['seq']))
+        file.close()
+    print('Write finished')
+#endregion
+
+
 if __name__ =="__main__":
     # 1. 数据库连接
     uctools =  ucTools('172.16.25.20')
@@ -224,11 +241,12 @@ if __name__ =="__main__":
                                 trainY=file_enzyme_train_y
                               )
     
-   
+    file_enzyme_fasta = './data/preprocess/enzyme_train.fasta'
+    save_train2fasta(dataset= enzyme_Y, file_out= file_enzyme_fasta)
 
     #3. 「酶｜非酶」模型训练
     file_isenzyme_model = './model/isenzyme.model'
-    train_isenzyme(enzyme_X.iloc[0:200,:], enzyme_Y.enzyme_label.iloc[0:200], model_file=file_isenzyme_model)
+    train_isenzyme(enzyme_X, enzyme_Y.enzyme_label, model_file=file_isenzyme_model)
 
     #4. 加载EC号训练数据
     file_ec_train_x = './data/preprocess/ec_train_x.feather'
@@ -246,10 +264,9 @@ if __name__ =="__main__":
     ec_Y['tags'] = 1
     prepare_slice_file(x_data=ec_X,y_data=ec_Y[['ec_label', 'tags']],x_file=file_slice_train_x, y_file=file_slice_train_y)
     
+    #6. 训练Slice模型
     file_ec_slice_model = './model'
     train_ec_slice(trainX=file_slice_train_x, trainY=file_slice_train_y, modelPath=file_ec_slice_model)
-    # print(train_data_labeled)
 
 
-    
-    print('ok')
+    print('训练完成')
