@@ -71,10 +71,106 @@ def get_isEnzymeRes(querydata, model_file):
     return predict, predictprob[:,1]
 #endregion 获取「酶｜非酶」预测结果
 
-def get_slice_res(query_data, model_path):
+#region 创建slice需要的数据文件
+def to_file_matrix(file, ds, col_num, stype='label'):
+    """[创建slice需要的数据文件]
+
+    Args:
+        file ([string]): [要保存的文件名]
+        ds ([DataFrame]): [数据]
+        col_num ([int]): [有多少列]
+        stype (str, optional): [文件类型：feature，label]. Defaults to 'label'.
+    """
+    if os.path.exists(file):
+        return 'file exist'
     
+    if stype== 'label':
+        seps = ':'
+    if stype == 'feature':
+        seps = ' '
+    ds.to_csv(file, index= 0, header =0 , sep= seps)
+
+    cmd ='''sed -i '1i {0} {1}' {2}'''.format(len(ds), col_num, file)
+    os.system(cmd)
+#endregion
+
+#region 获取slice预测结果
+def get_slice_res(query_data, model_path, res_file):
+    """[获取slice预测结果]
+
+    Args:
+        query_data ([DataFrame]): [需要预测的数据]
+        model_path ([string]): [Slice模型路径]
+        res_file ([string]]): [预测结果文件]
+    Returns:
+        [DataFrame]: [预测结果]
+    """
+    file_slice_x_1515 = './data/preprocess/slice_x_1515.txt'
+    if ~os.path.exists(file_slice_x_1515):
+        to_file_matrix(file=file_slice_x_1515, ds=query_data.round(4),col_num=1900, stype='feature')
+    
+    cmd = '''./slice_predict {0} {1} {2} -o 32 -b 0 -t 32 -q 0'''.format(file_slice_x_1515, model_path, res_file)
+    print(cmd)
+    os.system(cmd)
+    result_slice = pd.read_csv(res_file,  header = None, skiprows=1 ,sep=' ')
+    return result_slice
+#endregion
+
+def get_blast_with_pred_label(blast_data, cnx):
+    sql ='''SELECT id, 
+            isemzyme, 
+            "isMultiFunctional",
+            "functionCounts", 
+            ec_number, 
+            ec_specific_level from tb_sprot 
+        where id in ('{0}') '''.format('\',\''.join(blast_data.sseqid.values))
+    blast_tags = pd.read_sql_query(sql,cnx)
+    blast_final = blast_data.merge(blast_tags,  left_on='sseqid', right_on='id', how='left')
+    blast_final.drop_duplicates(subset=['id_x'], keep='first', inplace =True)
+    blast_final=blast_final[['id_x', 'pident', 'isemzyme', 'isMultiFunctional', 'functionCounts', 'ec_number']]
+    blast_final=blast_final.rename(columns={'id_x':'id', 
+                                                'isemzyme':'isemzyme_blast', 
+                                                'isMultiFunctional':'isMultiFunctional_blast', 
+                                                'functionCounts':'functionCounts_blast', 
+                                                'ec_number':'ec_number_blast'
+                                            })
+    blast_final.reset_index(drop=True, inplace=True)
+    return blast_final
+
+
+
+def get_final_results(ori_data, blast_data, slice_data, cnx):
+    blast_res = get_blast_with_pred_label(blast_data=blast_data, cnx=cnx)
+
+
+    ori_data = ori_data[['id', 'ec_number', 'blattner_ec_number']]
+    ori_data.drop_duplicates(subset=None, keep='first', inplace =True)
+
+    data_test_blast_res = ori_data.merge(blast_res, on=['id'], how='left')
+
+
+def sort_results(result_slice):
+    """
+    将slice的实验结果排序，并按照推荐顺序以两个矩阵的形式返回
+    @pred_top：预测结果排序
+    @pred_pb_top：预测结果评分排序
+    """
+    pred_top =[]
+    pred_pb_top =[]
+    aac =[]
+    for index, row in result_slice.iterrows():
+        row_trans= [*row.apply(lambda x: x.split(':')).values]
+        row_trans = pd.DataFrame(row_trans).sort_values(by=[1], ascending=False)
+        pred_top += [list(np.array(row_trans[0]).astype('int'))]
+        pred_pb_top += [list(np.array(row_trans[1]).astype('float'))]
+    pred_top = pd.DataFrame(pred_top)
+    pred_pb_top = pd.DataFrame(pred_pb_top)
+    return pred_top,  pred_pb_top
 
 if __name__ == '__main__':
+    
+    uctools =  ucTools('172.16.25.20')
+    cnx_ecdb = uctools.db_conn()
 
     # 1. 加载序列序列文件
     file_1515 = './tasks/task3/data/ecoli1515/1515testset_with_unirep.tsv'
@@ -88,13 +184,14 @@ if __name__ == '__main__':
     # 2. 获取序列比对结果
     blast_res = getblast(querydata=data_1515, refdata=file_ref, blastres_file=blast_res_file)
 
-    # 3.进行序列比对
+    # 3.获取酶-非酶预测结果
     isEnzyme_model = './model/isenzyme.model'
     isEnzyme_pred, isEnzyme_pred_prob = get_isEnzymeRes(querydata=data_1515.iloc[:,8:1909], model_file=isEnzyme_model )
 
-    # 4.获取Slice预测结果
 
-    print(blast_res)
+    # 4.获取Slice预测结果
+    slice_pred = get_slice_res(data_1515.iloc[:,7:1909], './model', './results/1515/slice_results.txt')
+    
 
 
     print('ok')
