@@ -7,8 +7,9 @@ from tqdm import tqdm
 from multiprocessing import Pool
 from multiprocessing.dummy import Pool as ThreadPool
 import time
+import random
 import subprocess
-
+import tools.funclib as funclib
 
 #region 从gizp读取数据
 def read_file_from_gzip(file_in_path, file_out_path, extract_type):
@@ -70,56 +71,46 @@ def process_record(record, extract_type='with_ec'):
     Returns:
         [type]: [description]
     """
-    
-    if record.id == 'O32462':
-        print(record.description)
+
 
     description = record.description
-    isEnzyme = 'EC=' in description
+    isEnzyme = 'EC=' in description     #有EC号的被认为是酶，否则认为是酶
     isMultiFunctional = False
-    functionCounts = 1
-    ec_specific_level =0 
+    functionCounts = 0
+    ec_specific_level =0
+
+
     if isEnzyme:
-        ec = str(re.findall(r"EC=[0-9,.\-;]*",description)).replace('EC=','').replace('\'','').replace(']','').replace('[','').replace(';','')
+        ec = str(re.findall(r"EC=[0-9,.\-;]*",description)
+                 ).replace('EC=','').replace('\'','').replace(']','').replace('[','').replace(';','')
+
+        #统计酶的功能数
         isMultiFunctional = ',' in ec
         functionCounts = ec.count(',') + 1
 
-        #大于三级EC号的被认为是酶，小于三级的不认为是酶
+
         # - 单功能酶
         if not isMultiFunctional:
             levelCount = ec.count('-')
             ec_specific_level = 4-levelCount
-            if levelCount>1:
-                isEnzyme = False
+
         else: # -多功能酶
             ecarray = ec.split(',')
             for subec in ecarray:
-                if subec.count('-') ==0:
-                    isEnzyme = True
-                    ec_specific_level = 4
-                    break
-                elif subec.count('-') ==1:
-                    isEnzyme = True
-                    ec_specific_level = 3
-                    break
-                else:
-                    isEnzyme=False
-                    
-                    if (4- subec.count('-')) > ec_specific_level:
-                        ec_specific_level = (4- subec.count('-'))
-                    
-
+                current_ec_level = 4- subec.count('-')
+                if ec_specific_level < current_ec_level:
+                    ec_specific_level = current_ec_level
     else:
         ec = '-'
     
     id = record.id
     name = record.name
     seq = record.seq
-    date_integraged = record.annotations.get('date')
+    date_integrated = record.annotations.get('date')
     date_sequence_update = record.annotations.get('date_last_sequence_update')
     date_annotation_update = record.annotations.get('date_last_annotation_update')
-    seqlength = len(seq)   
-    res = [id, name, isEnzyme, isMultiFunctional, functionCounts, ec,ec_specific_level, date_integraged, date_sequence_update, date_annotation_update,  seq, seqlength]
+    seqlength = len(seq)
+    res = [id, name, isEnzyme, isMultiFunctional, functionCounts, ec,ec_specific_level, date_integrated, date_sequence_update, date_annotation_update,  seq, seqlength]
 
     if extract_type == 'full':
         return res
@@ -138,21 +129,21 @@ def process_record(record, extract_type='with_ec'):
 #endregion
 
 #将表格存储为fasta文件    
-def table_2_fasta(table, file_out):
-    file = open(file_out, 'w')
-    for index, row in table.iterrows():
-        file.write('>{0}\n'.format(row['id']))
-        file.write('{0}\n'.format(row['seq']))
-    file.close()
-    print('Write finished')
+# def table_2_fasta(table, file_out):
+#     file = open(file_out, 'w')
+#     for index, row in table.iterrows():
+#         file.write('>{0}\n'.format(row['id']))
+#         file.write('{0}\n'.format(row['seq']))
+#     file.close()
+#     print('Write finished')
 
 # 将给定的数据随机划分为2份
 def split_random(data):
     index_ref = random.sample(range(0,len(data)), int(len(data)/2))  #创建随机index
     ref = data.iloc[index_ref]     #筛选ref
     query = data.iloc[~data.index.isin(index_ref)] # 剩下的是Query
-    table_2_fasta(ref, './data/sprot_with_ec_ref.fasta')   #写入文件ref fasta
-    table_2_fasta(query, './data/sprot_with_ec_query.fasta') #写入文件query fasta
+    funclib.table_2_fasta(ref, './data/sprot_with_ec_ref.fasta')   #写入文件ref fasta
+    funclib.table_2_fasta(query, './data/sprot_with_ec_query.fasta') #写入文件query fasta
     return query, ref
 
 # 按时序前一半后一般划分
@@ -160,13 +151,14 @@ def split_time_half(data):
     index_ref = range(int(len(data)/2))
     ref = data.iloc[index_ref]     #筛选ref
     query = data.iloc[~data.index.isin(index_ref)] # 剩下的是Query
-    table_2_fasta(ref, './data/sprot_with_ec_ref.fasta')   #写入文件ref fasta
-    table_2_fasta(query, './data/sprot_with_ec_query.fasta') #写入文件query fasta
+    funclib.table_2_fasta(ref, './data/sprot_with_ec_ref.fasta')   #写入文件ref fasta
+    funclib.table_2_fasta(query, './data/sprot_with_ec_query.fasta') #写入文件query fasta
+
 
 if __name__ =="__main__":
     start =  time.process_time()
-    in_filepath = r'./data/uniprot_sprot.dat.gz'
-    out_filepath = r'./data/sprot_full.tsv'
+    in_filepath = r'/home/shizhenkun/codebase/BioUniprot/data/201802/uniprot_sprot.dat.gz'
+    out_filepath = r'/home/shizhenkun/codebase/BioUniprot/data/201802/sprot_full.tsv'
     extract_type ='full'
     read_file_from_gzip(file_in_path=in_filepath, file_out_path=out_filepath, extract_type=extract_type)
     end =  time.process_time()
