@@ -229,6 +229,7 @@ if __name__ =="__main__":
 
     #2. 加载「酶｜非酶」训练数据
     DATE_TRAIN ='2018-01-01'
+    DATA_ROOT = r'/home/shizhenkun/codebase/BioUniprot/data/benchmark/'
 
     file_enzyme_train_x = './data/preprocess/enzyme_train_x.feather'
     file_enzyme_train_y = './data/preprocess/enzyme_train_y.feather'

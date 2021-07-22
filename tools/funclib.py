@@ -253,3 +253,54 @@ def run_integrated(res_data, train, test):
     print('baslineName', '\t\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
     for method in methods:
         get_integrated_results(res_data, train, test, method)
+
+
+
+#region 将多功能的EC编号展开，返回唯一的EC编号列表
+def get_distinct_ec(ecnumbers):
+    """
+    将多功能的EC编号展开，返回唯一的EC编号列表
+    Args:
+        ecnumbers: EC_number 列
+
+    Returns: 排序好的唯一EC列表
+
+    """
+    result_list=[]
+    for item in ecnumbers:
+        ecarray = item.split(',')
+        for subitem in ecarray:
+            result_list+=[subitem.strip()]
+    return sorted(list(set(result_list)))
+#endregion
+
+#region 将多功能酶拆解为多个单功能酶
+def split_ecdf_to_single_lines(full_table):
+    """
+    将多功能酶拆解为多个单功能酶
+    Args:
+        full_table: 包含EC号的完整列表
+    并 1.去除酶号前后空格
+    并 2. 将酶号拓展为4位的标准格式
+    Returns: 展开后的EC列表，每个EC号一行
+    """
+    resDf = pd.DataFrame(columns=full_table.columns.values)
+    for index, row in tqdm(full_table.iterrows()):
+        if row.ec_number.strip()=='-':   #若是非酶直接返回
+            row.ec_number='-'
+            row.ec_number = row.ec_number.strip()
+            resDf = resDf.append(row, ignore_index=True)
+        else:
+            ecs = row.ec_number.split(',') #拆解多功能酶
+            for ec in ecs:
+                ec = ec.strip()
+                ecarray=ec.split('.') #拆解每一位
+                if ecarray[3] == '':  #若是最后一位是空，补足_
+                    ec=ec+'-'
+                row.ec_number = ec.strip()
+                resDf = resDf.append(row, ignore_index=True)
+    return resDf
+
+#endregion
+
+

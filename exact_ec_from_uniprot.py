@@ -82,7 +82,7 @@ def process_record(record, extract_type='with_ec'):
 
     if isEnzyme:
         ec = str(re.findall(r"EC=[0-9,.\-;]*",description)
-                 ).replace('EC=','').replace('\'','').replace(']','').replace('[','').replace(';','')
+                 ).replace('EC=','').replace('\'','').replace(']','').replace('[','').replace(';','').strip()
 
         #统计酶的功能数
         isMultiFunctional = ',' in ec
@@ -103,12 +103,12 @@ def process_record(record, extract_type='with_ec'):
     else:
         ec = '-'
     
-    id = record.id
-    name = record.name
-    seq = record.seq
-    date_integrated = record.annotations.get('date')
-    date_sequence_update = record.annotations.get('date_last_sequence_update')
-    date_annotation_update = record.annotations.get('date_last_annotation_update')
+    id = record.id.strip()
+    name = record.name.strip()
+    seq = record.seq.strip()
+    date_integrated = record.annotations.get('date').strip()
+    date_sequence_update = record.annotations.get('date_last_sequence_update').strip()
+    date_annotation_update = record.annotations.get('date_last_annotation_update').strip()
     seqlength = len(seq)
     res = [id, name, isEnzyme, isMultiFunctional, functionCounts, ec,ec_specific_level, date_integrated, date_sequence_update, date_annotation_update,  seq, seqlength]
 
@@ -128,14 +128,7 @@ def process_record(record, extract_type='with_ec'):
             return res
 #endregion
 
-#将表格存储为fasta文件    
-# def table_2_fasta(table, file_out):
-#     file = open(file_out, 'w')
-#     for index, row in table.iterrows():
-#         file.write('>{0}\n'.format(row['id']))
-#         file.write('{0}\n'.format(row['seq']))
-#     file.close()
-#     print('Write finished')
+
 
 # 将给定的数据随机划分为2份
 def split_random(data):

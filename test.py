@@ -105,21 +105,22 @@ def to_file_matrix(file, ds, col_num, stype='label'):
 # endregion
 
 # region 获取slice预测结果
-def get_slice_res(query_data, model_path, res_file):
+def get_slice_res(query_data, model_path, res_file, file_slice='./data/preprocess/slice_x_1515.txt'):
     """[获取slice预测结果]
 
     Args:
+        file_slice: slice模型需要的x文件，默认为./data/preprocess/slice_x_1515.txt，不存在则创建
         query_data ([DataFrame]): [需要预测的数据]
         model_path ([string]): [Slice模型路径]
         res_file ([string]]): [预测结果文件]
     Returns:
         [DataFrame]: [预测结果]
     """
-    file_slice_x_1515 = './data/preprocess/slice_x_1515.txt'
-    if ~os.path.exists(file_slice_x_1515):
-        to_file_matrix(file=file_slice_x_1515, ds=query_data.round(4), col_num=1900, stype='feature')
 
-    cmd = '''./slice_predict {0} {1} {2} -o 32 -b 0 -t 32 -q 0'''.format(file_slice_x_1515, model_path, res_file)
+    if ~os.path.exists(file_slice):
+        to_file_matrix(file=file_slice, ds=query_data.round(4), col_num=1900, stype='feature')
+
+    cmd = '''./slice_predict {0} {1} {2} -o 32 -b 0 -t 32 -q 0'''.format(file_slice, model_path, res_file)
     print(cmd)
     os.system(cmd)
     result_slice = pd.read_csv(res_file, header=None, skiprows=1, sep=' ')
@@ -239,7 +240,8 @@ if __name__ == '__main__':
          'blattner_id',
          'blattner_ec_number'] + ['f' + str(i) for i in range(1, 1901)]]
 
-    data_1515.columns = np.array(colname)[0]
+    data_1515.columns = np.array(colname).flatten()
+    data_1515.drop_duplicates(subset=['seq'], keep='first', inplace=True)
 
     file_ref = './data/preprocess/enzyme_train.fasta'
     blast_res_file = './results/1515/balastres.tsv'
