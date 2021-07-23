@@ -178,6 +178,22 @@ def getblast(train, test):
     os.system(cmd3)
     return res_data
 
+def getblast_fasta(trainfasta, testfasta):
+    
+    cmd1 = r'diamond makedb --in {0} -d /tmp/train.dmnd'.format(trainfasta)
+    cmd2 = r'diamond blastp -d /tmp/train.dmnd  -q  {0} -o /tmp/test_fasta_results.tsv -b5 -c1 -k 1'.format(testfasta)
+    cmd3 = r'rm -rf /tmp/*.fasta /tmp/*.dmnd /tmp/*.tsv'
+    print(cmd1)
+    os.system(cmd1)
+    print(cmd2)
+    os.system(cmd2)
+    res_data = pd.read_csv('/tmp/test_fasta_results.tsv', sep='\t', names=['id', 'sseqid', 'pident', 'length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore'])
+    os.system(cmd3)
+    return res_data
+
+
+
+
 def caculateMetrix_1(baselineName,tp, fp, tn,fn):
     sampleNum = tp+fp+tn+fn
     accuracy = (tp+tn)/sampleNum
