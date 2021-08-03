@@ -5,6 +5,7 @@ import joblib
 from tools.ucTools import ucTools
 from tqdm import tqdm
 from jax_unirep import get_reps
+from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
 import os
 import subprocess
@@ -21,22 +22,24 @@ def get_enzyme_train_set(traindata):
         [DataFrame]: [trianX, trainY]
     """
     train_X = traindata.iloc[:,4:]
-    train_Y = traindata.iloc[:,1].astype('int')
+    train_Y = traindata['isemzyme'].astype('int')
     return train_X, train_Y
 #endregion
 
+#region 获取几功能酶训练的数据集
+def get_howmany_train_set(train_data):
+    """[获取几功能酶训练的数据集]
+    Args:
+        train_data ([DataFrame]): [完整训练数据]
+    Returns:
+        [DataFrame]: [[train_x, trian_y]]
+    """
+    train_data = train_data[train_data.isemzyme] #仅选用酶数据
+    train_X = train_data.iloc[:,4:1904]
+    train_Y =train_data['functionCounts'].astype('int')
+    return train_X, pd.DataFrame(train_Y)
 
-def xgmain(X_train_std, Y_train, model_file):
-    model = XGBClassifier(objective='binary:logistic', random_state=42, use_label_encoder=False, n_jobs=-2, eval_metric='mlogloss')
-    model.fit(X_train_std, Y_train.ravel())
-    joblib.dump(model, model_file)
-    print('XGBoost模型训练完成')
-
-def train_isenzyme(X,Y, model_file, force_model_update=False):
-    if os.path.exists(model_file) and (force_model_update==False):
-        return
-    else:
-        xgmain(X,Y,model_file)
+#endregion
 
 #region 获取EC号训练的数据集
 def get_ec_train_set(train_data, ec_label_dict):
@@ -47,14 +50,74 @@ def get_ec_train_set(train_data, ec_label_dict):
     Returns:
         [DataFrame]: [[train_x, trian_y]]
     """
-    # train_data = train_data[train_data.isemzyme]
+    train_data = train_data[train_data.isemzyme] #仅选用酶数据
+    train_data = train_data[train_data.functionCounts ==1] #仅选用单功能酶数据
     train_data['ec_label'] = train_data.ec_number.apply(lambda x: ec_label_dict.get(x))
     train_X = train_data.iloc[:,4:1904]
     train_Y =train_data['ec_label']
-
-    train_X
     return train_X, pd.DataFrame(train_Y)
 
+#endregion
+
+#region 训练是否是酶模型
+def train_isenzyme(X,Y, model_file, force_model_update=False):
+    """[训练是否是酶模型]
+
+    Args:
+        X ([DataFrame]): [特征数据]
+        Y ([DataFrame]): [标签数据]
+        model_file ([string]): [模型的存放路径]
+        force_model_update (bool, optional): [是否强制更新模型]. Defaults to False.
+
+    Returns:
+        [object]: [训练好的模型]
+    """
+    if os.path.exists(model_file) and (force_model_update==False):
+        return
+    else:
+        model = XGBClassifier(objective='binary:logistic', random_state=42, use_label_encoder=False, n_jobs=-2, eval_metric='mlogloss')
+        print(model)
+        model.fit(X, Y.ravel())
+        joblib.dump(model, model_file)
+        print('XGBoost模型训练完成')
+        return model
+#endregion
+
+def importance_features_top(model, x_train, topN=10):
+    """打印模型的重要指标，排名topN指标"""
+    print("打印XGBoost重要指标")
+    feature_importances_ = model.feature_importances_
+    feature_names = x_train.columns
+    importance_col = pd.DataFrame([*zip(feature_names, feature_importances_)],  columns=['features', 'weight'])
+    importance_col_desc = importance_col.sort_values(by='weight', ascending=False)
+    print(importance_col_desc.iloc[:topN, :])
+
+#region 构建几功能酶模型
+def train_howmany_enzyme(data_x, data_y, model_file, force_model_update=False):
+    """[构建几功能酶模型]
+
+    Args:
+        data_x ([DataFrame]): [X训练数据]
+        data_y ([DataFrame]): [Y训练数据]
+
+    Returns:
+        [object]: [训练好的模型]
+    """
+    if os.path.exists(model_file) and (force_model_update==False):
+        return
+    else:
+        x_train, x_vali, y_train, y_vali = train_test_split(data_x,np.array(data_y).ravel(),test_size=0.3,random_state=1)
+        eval_set = [(x_train, y_train), (x_vali, y_vali)]
+        
+        model = XGBClassifier(min_child_weight=6, max_depth=15, objective='multi:softmax', num_class=11, use_label_encoder=False)
+        print("-" * 100)
+        print("几功能酶xgboost模型：", model)
+        model.fit(x_train, y_train, eval_metric="mlogloss", eval_set=eval_set, verbose=True)
+        # # 打印重要性指数
+        importance_features_top(model, x_train, topN=50)
+        # 保存模型
+        joblib.dump(model, model_file)
+        return model
 #endregion
 
 
@@ -145,6 +208,11 @@ if __name__ =="__main__":
     #3. 「酶｜非酶」模型训练
     enzyme_X, enzyme_Y = get_enzyme_train_set(train)
     train_isenzyme(X=enzyme_X, Y=enzyme_Y, model_file=MODELDIR+'isenzyme.model', force_model_update=UPDATE_MODEL)
+
+    #4. 「几功能酶训练模型」训练
+
+    howmany_X, howmay_Y = get_howmany_train_set(train)
+    train_howmany_enzyme(data_x=howmany_X, data_y=(howmay_Y-1), model_file=MODELDIR+'howmany_enzyme.model', force_model_update=UPDATE_MODEL)
 
     #4. 加载EC号训练数据
     if os.path.exists(DATADIR+'ec_label_dict.npy'):

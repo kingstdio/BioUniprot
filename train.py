@@ -249,6 +249,11 @@ if __name__ =="__main__":
     file_isenzyme_model = './model/isenzyme.model'
     train_isenzyme(enzyme_X, enzyme_Y.enzyme_label, model_file=file_isenzyme_model)
 
+
+   
+
+
+
     #4. 加载EC号训练数据
     file_ec_train_x = './data/preprocess/ec_train_x.feather'
     file_ec_train_y = './data/preprocess/ec_train_y.feather'
