@@ -8,7 +8,6 @@ from multiprocessing import Pool
 from multiprocessing.dummy import Pool as ThreadPool
 import time
 import random
-import subprocess
 import tools.funclib as funclib
 
 #region 从gizp读取数据

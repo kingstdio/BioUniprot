@@ -71,29 +71,6 @@ def get_isEnzymeRes(querydata, model_file):
     return predict, predictprob[:,1]
 #endregion 获取「酶｜非酶」预测结果
 
-#region 创建slice需要的数据文件
-def to_file_matrix(file, ds, col_num, stype='label'):
-    """[创建slice需要的数据文件]
-
-    Args:
-        file ([string]): [要保存的文件名]
-        ds ([DataFrame]): [数据]
-        col_num ([int]): [有多少列]
-        stype (str, optional): [文件类型：feature，label]. Defaults to 'label'.
-    """
-    if os.path.exists(file):
-        return 'file exist'
-    
-    if stype== 'label':
-        seps = ':'
-    if stype == 'feature':
-        seps = ' '
-    ds.to_csv(file, index= 0, header =0 , sep= seps)
-
-    cmd ='''sed -i '1i {0} {1}' {2}'''.format(len(ds), col_num, file)
-    os.system(cmd)
-#endregion
-
 #region 获取slice预测结果
 def get_slice_res(query_data, model_path, res_file):
     """[获取slice预测结果]

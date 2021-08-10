@@ -4,6 +4,7 @@ import numpy as np
 import joblib
 import os
 import benchmark_common as bcommon
+import benchmark_config as cfg
 
 # region 获取「酶｜非酶」预测结果
 def get_isEnzymeRes(querydata, model_file):
@@ -18,9 +19,22 @@ def get_isEnzymeRes(querydata, model_file):
     predict = model.predict(querydata)
     predictprob = model.predict_proba(querydata)
     return predict, predictprob[:, 1]
+# endregion
 
-
-# endregion 获取「酶｜非酶」预测结果
+# region 获取「几功能酶」预测结果
+def get_howmany_Enzyme(querydata, model_file):
+    """获取「几功能酶」预测结果
+    Args:
+        querydata ([DataFrame]): [需要预测的数据]
+        model_file ([string]): [模型文件]
+    Returns:
+        [DataFrame]: [预测结果、预测概率]
+    """
+    model = joblib.load(model_file)
+    predict = model.predict(querydata)
+    predictprob = model.predict_proba(querydata)
+    return predict+1, predictprob #标签加1，单功能酶标签为0，统一加1
+# endregion
 
 # region 获取slice预测结果
 def get_slice_res(slice_query_file, model_path, res_file):
@@ -99,105 +113,104 @@ def translate_slice_pred(slice_pred, ec2label_dict, test_set):
     return res_df
 #endregion
 
-#region 为blast序列比对添加结果标签
-def blast_add_label(blast_df, trainset,):
-    """[为blast序列比对添加结果标签]
+
+
+#region 将测试结果进行集成输出
+def run_integrage(slice_pred, dict_ec_transfer):
+    """[将测试结果进行集成输出]
 
     Args:
-        blast_df ([DataFrame]): [序列比对结果]
-        trainset ([DataFrame]): [训练数据]
+        slice_pred ([DataFrame]): [slice 预测结果]
+        dict_ec_transfer ([dict]): [EC转移dict]
 
     Returns:
-        [Dataframe]: [添加标签后的数据]
+        [DataFrame]: [集成后的最终结果]
     """
-    res_df = blast_df.merge(trainset, left_on='sseqid', right_on='id', how='left')
-    res_df = res_df.rename(columns={'id_x': 'id',
-                                              'isemzyme': 'isemzyme_blast',
-                                              'functionCounts': 'functionCounts_blast',
-                                              'ec_number': 'ec_number_blast'
-                                              })
-    return res_df.iloc[:,np.r_[0,13:16]]
-#endregion
+    # 取top10,因为最多有10功能酶
+    slice_pred = slice_pred.iloc[:,np.r_[0:11, 21:26]]
 
-
-def run_integrage(slice_pred):
     #酶集成标签
     slice_pred['is_enzyme_i'] = slice_pred.apply(lambda x: int(x.isemzyme_blast) if str(x.isemzyme_blast)!='nan' else x.isEnzyme_pred_xg, axis=1)
 
     # 清空非酶的EC预测标签
-    for i in range(20):
+    for i in range(9):
         slice_pred['top'+str(i)] = slice_pred.apply(lambda x: '' if x.is_enzyme_i==0 else x['top'+str(i)], axis=1)
         slice_pred['top0'] = slice_pred.apply(lambda x: x.ec_number_blast if str(x.ec_number_blast)!='nan' else x.top0, axis=1)
 
     # 清空有比对结果的预测标签
-    for i in range(1,20):
-        slice_pred['top'+str(i)] = slice_pred.apply(lambda x: '' if str(x.ec_number_blast)!='nan' else x['top'+str(i)], axis=1)
+    for i in range(1,10):
+        slice_pred['top'+str(i)] = slice_pred.apply(lambda x: '' if str(x.ec_number_blast)!='nan' else x['top'+str(i)], axis=1) #有比对结果的
+        slice_pred['top'+str(i)] = slice_pred.apply(lambda x: '' if int(x.functionCounts_pred_xg) < int(i+1) else x['top'+str(i)], axis=1) #无比对结果的
     
     slice_pred['top0']=slice_pred['top0'].apply(lambda x: '' if x=='-' else x)
-    slice_pred=slice_pred.iloc[:,np.r_[0:5,21:26]]
+    
+    # 将EC号拆开
+    for index, row in slice_pred.iterrows():
+        ecitems=row['top0'].split(',')
+        if len(ecitems)>1:
+            for i in range(len(ecitems)):
+                slice_pred.loc[index,'top'+str(i)] =  ecitems[i].strip()
+
     slice_pred.reset_index(drop=True, inplace=True)
 
-    return slice_pred
+    # 添加几功能酶预测结果
+    slice_pred['pred_functionCounts'] = slice_pred.apply(lambda x: int(x['functionCounts_blast']) if str(x['functionCounts_blast'])!='nan' else x.functionCounts_pred_xg ,axis=1)
+    # 取最终的结果并改名
+    colnames=['id', 'pred_ec1', 'pred_ec2', 'pred_ec3', 'pred_ec4', 'pred_ec5' , 'pred_ec6', 'pred_ec7', 'pred_ec8', 'pred_ec9', 'pred_ec10' ,'pred_isEnzyme', 'pred_functionCounts']
+    slice_pred=slice_pred.iloc[:, np.r_[0:11, 16:18]]
+    slice_pred.columns = colnames
 
+    # 计算EC转移情况
+    for i in range(1,11):
+        slice_pred['pred_ec'+str(i)] = slice_pred['pred_ec'+str(i)].apply(lambda x: dict_ec_transfer.get(x) if x in dict_ec_transfer.keys() else x)
+
+    return slice_pred
+#endregion
 
 if __name__ == '__main__':
 
-    # 1. 定义数据目录
-    DATADIR = r'''/home/shizhenkun/codebase/BioUniprot/data/benchmark/data/'''
-    RESULTSDIR = r'''/home/shizhenkun/codebase/BioUniprot/data/benchmark/results/'''
-    MODELDIR = r'''/home/shizhenkun/codebase/BioUniprot/data/benchmark/model'''
-
-
-    # 2. 读入数据
-    train = pd.read_feather(DATADIR+'train.feather').iloc[:,:4]
-    test = pd.read_feather(DATADIR+'test.feather')
-    train_fasta = DATADIR+'train.fasta'
-    test_fasta = DATADIR+'test.fasta'
-
-    # EC-标签字典
-    dict_ec_label = np.load(DATADIR + 'ec_label_dict.npy', allow_pickle=True).item()
-
-
-    file_blast_res = RESULTSDIR + r'test_blast_res.tsv'
-
+    # 1. 读入数据
+    print('loading data')
+    train = pd.read_feather(cfg.TRAIN_FEATURE).iloc[:,:4]
+    test = pd.read_feather(cfg.TEST_FEATURE)
+    dict_ec_label = np.load(cfg.FILE_EC_LABEL_DICT, allow_pickle=True).item() #EC-标签字典
+    dict_ec_transfer = np.load(cfg.FILE_TRANSFER_DICT, allow_pickle=True).item() #EC-转移字典
 
     # 2. 获取序列比对结果
-    blast_res = bcommon.getblast(query_fasta=test_fasta, ref_fasta=train_fasta, results_file=file_blast_res)
-    blast_res = blast_add_label(blast_df=blast_res, trainset=train)
-
-
+    blast_res = bcommon.getblast(query_fasta=cfg.TEST_FASTA, ref_fasta=cfg.TRAIN_FASTA, results_file=cfg.FILE_BLAST_RESULTS)
+    blast_res = bcommon.blast_add_label(blast_df=blast_res, trainset=train)
 
     # 3.获取酶-非酶预测结果
-    isEnzyme_model = MODELDIR + '/isenzyme.model'
     testX, testY = get_test_set(data=test)
+    isEnzyme_pred, isEnzyme_pred_prob = get_isEnzymeRes(querydata=testX, model_file=cfg.ISENZYME_MODEL)
 
-    isEnzyme_pred, isEnzyme_pred_prob = get_isEnzymeRes(querydata=testX, model_file=isEnzyme_model)
+    # 4. 预测几功能酶预测结果
+    howmany_Enzyme_pred, howmany_Enzyme_pred_prob = get_howmany_Enzyme(querydata=testX, model_file=cfg.HOWMANY_MODEL)
 
-    # pd.DataFrame(isEnzyme_pred).to_csv(RESULTSDIR+'slice_isEnzyme_pred.tsv', sep='\t', index=None)
-    
-    # 4.获取Slice预测结果
-    # 4.1 准备slice所用文件
+    # 5.获取Slice预测结果
+    # 5.1 准备slice所用文件
     bcommon.prepare_slice_file( x_data=testX, 
                                 y_data=testY['ec_number'], 
-                                x_file=DATADIR+'slice_test_x.txt', 
-                                y_file=DATADIR+'slice_test_y.txt', 
+                                x_file=cfg.FILE_SLICE_TESTX,
+                                y_file=cfg.FILE_SLICE_TESTY,
                                 ec_label_dict=dict_ec_label
                             )
-    # 4.2 获得预测结果
-    slice_pred = get_slice_res(slice_query_file= DATADIR + 'slice_test_x.txt', model_path=  MODELDIR, res_file= RESULTSDIR + 'slice_results.txt')
+    # 5.2 获得预测结果
+    slice_pred = get_slice_res(slice_query_file=cfg.FILE_SLICE_TESTX, model_path= cfg.MODELDIR, res_file=cfg.FILE_SLICE_RESULTS)
 
-    # 4.3 对预测结果排序
+    # 5.3 对预测结果排序
     slice_pred_rank, slice_pred_prob = sort_results(slice_pred)
 
-    # 4.4 将结果翻译成EC号
+    # 5.4 将结果翻译成EC号
     slice_pred_ec = translate_slice_pred(slice_pred=slice_pred_rank, ec2label_dict = dict_ec_label, test_set=test)
     slice_pred_ec['isEnzyme_pred_xg'] = isEnzyme_pred
+    slice_pred_ec['functionCounts_pred_xg'] = howmany_Enzyme_pred
 
-
-   
     slice_pred_ec = slice_pred_ec.merge(blast_res, on='id', how='left')
-    slice_pred_ec = run_integrage(slice_pred=slice_pred_ec)
+    
+    # 6.将结果集成输出
+    slice_pred_ec = run_integrage(slice_pred=slice_pred_ec, dict_ec_transfer=dict_ec_transfer)
 
-    slice_pred_ec.to_csv(RESULTSDIR+'slice_pred.tsv', sep='\t', index=None)
+    slice_pred_ec.to_csv(cfg.FILE_INTE_RESULTS, sep='\t', index=None)
 
-    print('ok')
+    print('predict finished')

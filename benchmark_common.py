@@ -5,6 +5,7 @@ from tqdm import tqdm
 from jax_unirep import get_reps
 from xgboost import XGBClassifier, data
 import os
+import benchmark_config as cfg
 
 
 #region 准备Slice使用的文件
@@ -90,11 +91,9 @@ def getblast(ref_fasta, query_fasta, results_file):
     Returns:
         [DataFrame]: [比对结果]
     """
-    res_table_head = ['id', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'sstart', 'send',
-                      'evalue', 'bitscore']
 
     if os.path.exists(results_file):
-        res_data = pd.read_csv(results_file, sep='\t', names=res_table_head)
+        res_data = pd.read_csv(results_file, sep='\t', names=cfg.BLAST_TABLE_HEAD)
         return res_data
 
 
@@ -106,11 +105,91 @@ def getblast(ref_fasta, query_fasta, results_file):
     os.system(cmd1)
     print(cmd2)
     os.system(cmd2)
-    res_data = pd.read_csv(results_file, sep='\t', names=res_table_head)
+    res_data = pd.read_csv(results_file, sep='\t', names=cfg.BLAST_TABLE_HEAD)
     os.system(cmd3)
     return res_data
 
 
 # endregion
+
+#region 为blast序列比对添加结果标签
+def blast_add_label(blast_df, trainset,):
+    """[为blast序列比对添加结果标签]
+
+    Args:
+        blast_df ([DataFrame]): [序列比对结果]
+        trainset ([DataFrame]): [训练数据]
+
+    Returns:
+        [Dataframe]: [添加标签后的数据]
+    """
+    res_df = blast_df.merge(trainset, left_on='sseqid', right_on='id', how='left')
+    res_df = res_df.rename(columns={'id_x': 'id',
+                                              'isemzyme': 'isemzyme_blast',
+                                              'functionCounts': 'functionCounts_blast',
+                                              'ec_number': 'ec_number_blast'
+                                              })
+    return res_df.iloc[:,np.r_[0,13:16]]
+#endregion
+
+#region 打印模型的重要指标，排名topN指标
+def importance_features_top(model, x_train, topN=10):
+    """[打印模型的重要指标，排名topN指标]
+    Args:
+        model ([type]): [description]
+        x_train ([type]): [description]
+        topN (int, optional): [description]. Defaults to 10.
+    """
+    print("打印XGBoost重要指标")
+    feature_importances_ = model.feature_importances_
+    feature_names = x_train.columns
+    importance_col = pd.DataFrame([*zip(feature_names, feature_importances_)],  columns=['features', 'weight'])
+    importance_col_desc = importance_col.sort_values(by='weight', ascending=False)
+    print(importance_col_desc.iloc[:topN, :])
+#endregion
+
+
+# region 创建slice需要的数据文件
+def to_file_matrix(file, ds, col_num, stype='label'):
+    """[创建slice需要的数据文件]
+
+    Args:
+        file ([string]): [要保存的文件名]
+        ds ([DataFrame]): [数据]
+        col_num ([int]): [有多少列]
+        stype (str, optional): [文件类型：feature，label]. Defaults to 'label'.
+    """
+    if os.path.exists(file):
+        return 'file exist'
+
+    if stype == 'label':
+        seps = ':'
+    if stype == 'feature':
+        seps = ' '
+    ds.to_csv(file, index=0, header=0, sep=seps)
+
+    cmd = '''sed -i '1i {0} {1}' {2}'''.format(len(ds), col_num, file)
+    os.system(cmd)
+
+
+def prepare_slice_file(x_data, y_data, x_file, y_file, ec_label_dict):
+    """[准备slice所用的训练与测试文件]
+    Args:
+        x_data ([DataFrame]): [X数据]
+        y_data ([DataFrame]): [Y数据]
+        x_file ([string]): [x输出文件位置]
+        y_file ([string]): [y输出文件位置]
+        ec_label_dict ([dict]): [ec转label的字典文件]
+    """
+    if ~os.path.exists(x_file):
+        to_file_matrix(file=x_file, ds=x_data.round(4), col_num=1900, stype='feature')
+    if ~os.path.exists(y_file):
+        to_file_matrix(file=y_file, ds=y_data, col_num=max(ec_label_dict.values()), stype='label')
+    print('Write success')
+
+
+# endregion
+
+
 if __name__ =='__main__':
     print('success')
