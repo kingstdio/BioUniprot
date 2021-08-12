@@ -27,6 +27,8 @@ FILE_INTE_RESULTS  =   RESULTSDIR+'slice_pred.tsv'
 FILE_DEEPEC_RESULTS = RESULTSDIR + r'deepec/DeepEC_Result.txt'
 FILE_ECPRED_RESULTS = RESULTSDIR + r'ecpred/ecpred.tsv'
 
+FILE_EVL_RESULTS = RESULTSDIR + r'evaluation_table.xlsx'
+
 UPDATE_MODEL = False #强制模型更新标志
 VALIDATION_RATE = 0.3 #模型训练时验证集的比例
 

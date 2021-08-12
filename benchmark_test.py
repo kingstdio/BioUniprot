@@ -87,8 +87,8 @@ def get_test_set(data):
     Returns:
         [DataFrame]: [划分好的XY]
     """
-    testX = data.iloc[:,4:]
-    testY = data.iloc[:,:4]
+    testX = data.iloc[:,5:]
+    testY = data.iloc[:,:5]
     return testX, testY
 #endregion
 
@@ -163,6 +163,10 @@ def run_integrage(slice_pred, dict_ec_transfer):
     # 计算EC转移情况
     for i in range(1,11):
         slice_pred['pred_ec'+str(i)] = slice_pred['pred_ec'+str(i)].apply(lambda x: dict_ec_transfer.get(x) if x in dict_ec_transfer.keys() else x)
+    
+    # 清空没有EC号预测的酶功能数
+    with pd.option_context('mode.chained_assignment', None):
+        slice_pred.pred_functionCounts[slice_pred.pred_ec1.isnull()] = 0
 
     return slice_pred
 #endregion
@@ -171,7 +175,7 @@ if __name__ == '__main__':
 
     # 1. 读入数据
     print('loading data')
-    train = pd.read_feather(cfg.TRAIN_FEATURE).iloc[:,:4]
+    train = pd.read_feather(cfg.TRAIN_FEATURE).iloc[:,:5]
     test = pd.read_feather(cfg.TEST_FEATURE)
     dict_ec_label = np.load(cfg.FILE_EC_LABEL_DICT, allow_pickle=True).item() #EC-标签字典
     dict_ec_transfer = np.load(cfg.FILE_TRANSFER_DICT, allow_pickle=True).item() #EC-转移字典

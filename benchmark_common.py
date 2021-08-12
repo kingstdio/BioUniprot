@@ -22,27 +22,25 @@ def prepare_slice_file(x_data, y_data, x_file, y_file, ec_label_dict):
     Returns:
 
     """
-    if ~os.path.exists(x_file):
-         to_file_matrix(file=x_file, ds=x_data.round(4), col_num=1900, stype='feature')
 
-    if ~os.path.exists(y_file):
-        yds = pd.DataFrame()
-        yds['label'] = y_data.apply(lambda x: ec_label_dict.get(x))
-        yds['tags'] = 1
+    if os.path.exists(x_file) == False:
+         to_file_matrix(file=x_file, ds=x_data.round(6), col_num=1900, stype='feature')
 
+    if os.path.exists(y_file) == False:
+        y_data['tags'] = 1
         to_file_matrix(
             file=y_file,
-            ds=yds,
+            ds=y_data,
             col_num=max(ec_label_dict.values()),
             stype='label'
         )
-    print('Write success')
+
+    print('slice files prepared success')
 #endregion
 
 #region 创建slice需要的数据文件
 def to_file_matrix(file, ds, col_num, stype='label'):
     """[创建slice需要的数据文件]
-
     Args:
         file ([string]): [要保存的文件名]
         ds ([DataFrame]): [数据]
@@ -127,7 +125,8 @@ def blast_add_label(blast_df, trainset,):
     res_df = res_df.rename(columns={'id_x': 'id',
                                               'isemzyme': 'isemzyme_blast',
                                               'functionCounts': 'functionCounts_blast',
-                                              'ec_number': 'ec_number_blast'
+                                              'ec_number': 'ec_number_blast',
+                                              'ec_specific_level': 'ec_specific_level_blast'
                                               })
     return res_df.iloc[:,np.r_[0,13:16]]
 #endregion
@@ -147,49 +146,6 @@ def importance_features_top(model, x_train, topN=10):
     importance_col_desc = importance_col.sort_values(by='weight', ascending=False)
     print(importance_col_desc.iloc[:topN, :])
 #endregion
-
-
-# region 创建slice需要的数据文件
-def to_file_matrix(file, ds, col_num, stype='label'):
-    """[创建slice需要的数据文件]
-
-    Args:
-        file ([string]): [要保存的文件名]
-        ds ([DataFrame]): [数据]
-        col_num ([int]): [有多少列]
-        stype (str, optional): [文件类型：feature，label]. Defaults to 'label'.
-    """
-    if os.path.exists(file):
-        return 'file exist'
-
-    if stype == 'label':
-        seps = ':'
-    if stype == 'feature':
-        seps = ' '
-    ds.to_csv(file, index=0, header=0, sep=seps)
-
-    cmd = '''sed -i '1i {0} {1}' {2}'''.format(len(ds), col_num, file)
-    os.system(cmd)
-
-
-def prepare_slice_file(x_data, y_data, x_file, y_file, ec_label_dict):
-    """[准备slice所用的训练与测试文件]
-    Args:
-        x_data ([DataFrame]): [X数据]
-        y_data ([DataFrame]): [Y数据]
-        x_file ([string]): [x输出文件位置]
-        y_file ([string]): [y输出文件位置]
-        ec_label_dict ([dict]): [ec转label的字典文件]
-    """
-    if ~os.path.exists(x_file):
-        to_file_matrix(file=x_file, ds=x_data.round(4), col_num=1900, stype='feature')
-    if ~os.path.exists(y_file):
-        to_file_matrix(file=y_file, ds=y_data, col_num=max(ec_label_dict.values()), stype='label')
-    print('Write success')
-
-
-# endregion
-
 
 if __name__ =='__main__':
     print('success')

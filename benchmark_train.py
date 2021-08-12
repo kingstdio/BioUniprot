@@ -2,17 +2,11 @@ from pickle import FALSE
 import pandas as pd
 import numpy as np
 import joblib
-from tools.ucTools import ucTools
-from tqdm import tqdm
-from jax_unirep import get_reps
 from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier
 import benchmark_common as bcommon
 import benchmark_config as cfg
 import os
-import subprocess
-
-
 
 #region 获取酶训练的数据集
 def get_enzyme_train_set(traindata):
@@ -24,7 +18,7 @@ def get_enzyme_train_set(traindata):
     Returns:
         [DataFrame]: [trianX, trainY]
     """
-    train_X = traindata.iloc[:,4:]
+    train_X = traindata.iloc[:,5:]
     train_Y = traindata['isemzyme'].astype('int')
     return train_X, train_Y
 #endregion
@@ -38,7 +32,7 @@ def get_howmany_train_set(train_data):
         [DataFrame]: [[train_x, trian_y]]
     """
     train_data = train_data[train_data.isemzyme] #仅选用酶数据
-    train_X = train_data.iloc[:,4:1904]
+    train_X = train_data.iloc[:,5:]
     train_Y =train_data['functionCounts'].astype('int')
     return train_X, pd.DataFrame(train_Y)
 
@@ -55,8 +49,9 @@ def get_ec_train_set(train_data, ec_label_dict):
     """
     train_data = train_data[train_data.isemzyme] #仅选用酶数据
     train_data = train_data[train_data.functionCounts ==1] #仅选用单功能酶数据
+    # train_data = train_data[train_data.ec_specific_level ==4] #仅选用注释全的酶
     train_data['ec_label'] = train_data.ec_number.apply(lambda x: ec_label_dict.get(x))
-    train_X = train_data.iloc[:,4:1904]
+    train_X = train_data.iloc[:,5:1905]
     train_Y =train_data['ec_label']
     return train_X, pd.DataFrame(train_Y)
 
@@ -123,8 +118,8 @@ def train_howmany_enzyme(data_x, data_y, model_file, vali_ratio=0.3, force_model
         return model
 #endregion
 
-def make_ec_label(train_label, test_label, file_save):
-    if os.path.exists(file_save):
+def make_ec_label(train_label, test_label, file_save, force_model_update=False):
+    if os.path.exists(file_save) and (force_model_update==False):
         print('ec label dict already exist')
         return
     ecset = sorted( set(list(train_label) + list(test_label)))
@@ -134,8 +129,15 @@ def make_ec_label(train_label, test_label, file_save):
     print('字典保存成功')
 
 
-
+#region 训练slice模型
 def train_ec_slice(trainX, trainY, modelPath, force_model_update=False):
+    """[训练slice模型]
+    Args:
+        trainX ([DataFarame]): [X特征]
+        trainY ([DataFrame]): [ Y标签]]
+        modelPath ([string]): [存放模型的目录]
+        force_model_update (bool, optional): [是否强制更新模型]. Defaults to False.
+    """
     if os.path.exists(modelPath+'param') and (force_model_update==False):
         print('model exist')
         return
@@ -144,35 +146,40 @@ def train_ec_slice(trainX, trainY, modelPath, force_model_update=False):
     print(cmd)
     os.system(cmd)
     print('train finished')
+#endregion
 
 if __name__ =="__main__":
 
-    # 2. 读入数据
+    # 1. 读入数据
+    print('step 1 loading data')
     train = pd.read_feather(cfg.TRAIN_FEATURE)
     test = pd.read_feather(cfg.TEST_FEATURE)
 
-    #3. 「酶｜非酶」模型训练
+    #2. 「酶｜非酶」模型训练
+    print('step 2 train isEnzyme model')
     enzyme_X, enzyme_Y = get_enzyme_train_set(train)
     train_isenzyme(X=enzyme_X, Y=enzyme_Y, model_file= cfg.ISENZYME_MODEL, force_model_update=cfg.UPDATE_MODEL)
 
-    #4. 「几功能酶训练模型」训练
+    #3. 「几功能酶训练模型」训练
+    print('step 3 train how many enzymes model')
     howmany_X, howmany_Y = get_howmany_train_set(train)
     train_howmany_enzyme(data_x=howmany_X, data_y=(howmany_Y-1), model_file=cfg.HOWMANY_MODEL, force_model_update=cfg.UPDATE_MODEL)
 
     #4. 加载EC号训练数据
+    print('loading ec to label dict')
     if os.path.exists(cfg.FILE_EC_LABEL_DICT):
         dict_ec_label = np.load(cfg.FILE_EC_LABEL_DICT, allow_pickle=True).item()
     else:
-        dict_ec_label = make_ec_label(train_label=train['ec_number'], test_label=test['ec_number'], file_save= cfg.FILE_EC_LABEL_DICT)
+        dict_ec_label = make_ec_label(train_label=train['ec_number'], test_label=test['ec_number'], file_save= cfg.FILE_EC_LABEL_DICT, force_model_update=cfg.UPDATE_MODEL)
 
     ec_X, ec_Y = get_ec_train_set(train_data=train, ec_label_dict=dict_ec_label )
-    ec_Y['tags'] = 1
 
+    print('step 4 prepare slice files')
     #5. 构建Slice文件
     bcommon.prepare_slice_file(x_data=ec_X, y_data=ec_Y, x_file=cfg.FILE_SLICE_TRAINX, y_file=cfg.FILE_SLICE_TRAINY, ec_label_dict=dict_ec_label)
     
+    print('step 6 trainning slice model')
     #6. 训练Slice模型
-    train_ec_slice(trainX=cfg.FILE_SLICE_TRAINX, trainY=cfg.FILE_SLICE_TRAINY, modelPath=MODELDIR)
-
+    train_ec_slice(trainX=cfg.FILE_SLICE_TRAINX, trainY=cfg.FILE_SLICE_TRAINY, modelPath=cfg.MODELDIR)
 
     print('train finished')

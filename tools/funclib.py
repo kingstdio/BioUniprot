@@ -290,6 +290,8 @@ def get_distinct_ec(ecnumbers):
     return sorted(list(set(result_list)))
 #endregion
 
+
+
 #region 将多功能酶拆解为多个单功能酶
 def split_ecdf_to_single_lines(full_table):
     """
