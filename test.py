@@ -1,3 +1,4 @@
+from benchmark_config import FEATURE_NUM
 from baselines.deepec.deepec.ec_prediction_dl import preprocessing
 import pandas as pd
 import numpy as np
@@ -8,6 +9,7 @@ from jax_unirep import get_reps
 from xgboost import XGBClassifier, data
 import os
 import subprocess
+import benchmark_config as cfg
 
 #region 需要写fasta的dataFame格式
 def save_table2fasta(dataset, file_out):
@@ -84,7 +86,7 @@ def get_slice_res(query_data, model_path, res_file):
     """
     file_slice_x_1515 = './data/preprocess/slice_x_1515.txt'
     if ~os.path.exists(file_slice_x_1515):
-        to_file_matrix(file=file_slice_x_1515, ds=query_data.round(4),col_num=1900, stype='feature')
+        to_file_matrix(file=file_slice_x_1515, ds=query_data.round(cfg.FEATURE_NUM),col_num=FEATURE_NUM, stype='feature')
     
     cmd = '''./slice_predict {0} {1} {2} -o 32 -b 0 -t 32 -q 0'''.format(file_slice_x_1515, model_path, res_file)
     print(cmd)

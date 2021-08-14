@@ -3,7 +3,6 @@ import numpy as np
 from tools.ucTools import ucTools
 from tqdm import tqdm
 from jax_unirep import get_reps
-from xgboost import XGBClassifier, data
 import os
 import benchmark_config as cfg
 
@@ -24,7 +23,7 @@ def prepare_slice_file(x_data, y_data, x_file, y_file, ec_label_dict):
     """
 
     if os.path.exists(x_file) == False:
-         to_file_matrix(file=x_file, ds=x_data.round(6), col_num=1900, stype='feature')
+         to_file_matrix(file=x_file, ds=x_data.round(cfg.SAMPLING_BIT), col_num=cfg.FEATURE_NUM, stype='feature')
 
     if os.path.exists(y_file) == False:
         y_data['tags'] = 1

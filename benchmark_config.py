@@ -29,8 +29,10 @@ FILE_ECPRED_RESULTS = RESULTSDIR + r'ecpred/ecpred.tsv'
 
 FILE_EVL_RESULTS = RESULTSDIR + r'evaluation_table.xlsx'
 
-UPDATE_MODEL = False #强制模型更新标志
-VALIDATION_RATE = 0.3 #模型训练时验证集的比例
+UPDATE_MODEL = True #强制模型更新标志
+VALIDATION_RATE = 0.1 #模型训练时验证集的比例
+SAMPLING_BIT = 6
+FEATURE_NUM = 1900
 
 
 BLAST_TABLE_HEAD = ['id', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'sstart', 'send',

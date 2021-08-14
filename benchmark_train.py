@@ -77,7 +77,14 @@ def train_isenzyme(X,Y, model_file, vali_ratio=0.3, force_model_update=False):
         x_train, x_vali, y_train, y_vali = train_test_split(X,np.array(Y).ravel(),test_size=vali_ratio,random_state=1)
         eval_set = [(x_train, y_train), (x_vali, y_vali)]
 
-        model = XGBClassifier(objective='binary:logistic', random_state=42, use_label_encoder=False, n_jobs=-2, eval_metric='mlogloss')
+        model = XGBClassifier(
+            objective='binary:logistic', 
+            random_state=42, 
+            use_label_encoder=False, 
+            n_jobs=-2, 
+            eval_metric='mlogloss',
+            max_depth=6
+            )
         
         print(model)
         # model.fit(X, Y.ravel())
@@ -107,7 +114,13 @@ def train_howmany_enzyme(data_x, data_y, model_file, vali_ratio=0.3, force_model
         x_train, x_vali, y_train, y_vali = train_test_split(data_x,np.array(data_y).ravel(),test_size=vali_ratio,random_state=1)
         eval_set = [(x_train, y_train), (x_vali, y_vali)]
         
-        model = XGBClassifier(min_child_weight=6, max_depth=15, objective='multi:softmax', num_class=10, use_label_encoder=False)
+        model = XGBClassifier(
+                                min_child_weight=6, 
+                                max_depth=6, 
+                                objective='multi:softmax', 
+                                num_class=10, 
+                                use_label_encoder=False
+                            )
         print("-" * 100)
         print("几功能酶xgboost模型：", model)
         model.fit(x_train, y_train, eval_metric="mlogloss", eval_set=eval_set, verbose=True)
