@@ -68,7 +68,8 @@ def integrate_reslults(big_table):
     
     big_table = big_table.iloc[:,np.r_[0,11:23]]
     #添加blast是否是酶
-    big_table['isemzyme_deepec']=big_table.ec_deepec.apply(lambda x : 0 if str(x)=='nan' else 1)
+    with pd.option_context('mode.chained_assignment', None):
+        big_table['isemzyme_deepec']=big_table.ec_deepec.apply(lambda x : 0 if str(x)=='nan' else 1)
     big_table = big_table[[
                         'id', 
                         'isemzyme',
@@ -100,41 +101,60 @@ def integrate_reslults(big_table):
                             'isenzyme_ecpred']    
     # 拼合训练测试样本数
     samplecounts = pd.read_csv(cfg.DATADIR + 'ecsamplecounts.tsv', sep = '\t')
-    big_table.merge(samplecounts, left_on='ec_groundtruth', right_on='ec_number', how='left')                
-    big_table.to_excel(cfg.FILE_EVL_RESULTS, index=None)
+    big_table = big_table.merge(samplecounts, left_on='ec_groundtruth', right_on='ec_number', how='left')                
+    big_table.iloc[:,np.r_[0:14,15:17]].to_excel(cfg.FILE_EVL_RESULTS, index=None)
     return big_table
 
-def caculateMetrix(groundtruth, predict, baslineName):
+def caculateMetrix(groundtruth, predict, baselineName, type='binary'):
     acc = metrics.accuracy_score(groundtruth, predict)
-    precision = metrics.precision_score(groundtruth, predict, zero_division=1 )
-    recall = metrics.recall_score(groundtruth, predict)
-    f1 = metrics.f1_score(groundtruth, predict)
-    tn, fp, fn, tp = metrics.confusion_matrix(groundtruth, predict).ravel()
-
-    npv = tn/(fn+tn+1.4E-45)
-    print(baslineName, '\t\t%f' %acc,'\t%f'% precision,'\t\t%f'%npv,'\t%f'% recall,'\t%f'% f1, '\t', 'tp:',tp,'fp:',fp,'fn:',fn,'tn:',tn)
-
+    if type == 'binary':
+        precision = metrics.precision_score(groundtruth, predict, zero_division=True )
+        recall = metrics.recall_score(groundtruth, predict,  zero_division=True)
+        f1 = metrics.f1_score(groundtruth, predict, zero_division=True)
+        tn, fp, fn, tp = metrics.confusion_matrix(groundtruth, predict).ravel()
+        npv = tn/(fn+tn+1.4E-45)
+        print(baselineName, '\t\t%f' %acc,'\t%f'% precision,'\t\t%f'%npv,'\t%f'% recall,'\t%f'% f1, '\t', 'tp:',tp,'fp:',fp,'fn:',fn,'tn:',tn)
+    
+    if type == 'multi':
+        precision = metrics.precision_score(groundtruth, predict, average='macro', zero_division=True )
+        recall = metrics.recall_score(groundtruth, predict, average='macro', zero_division=True)
+        f1 = metrics.f1_score(groundtruth, predict, average='macro', zero_division=True)
+        print('%12s'%baselineName, ' \t\t%f '%acc,'\t%f'% precision, '\t\t%f'% recall,'\t%f'% f1)
 
 def evalueate_performance(evalutation_table):
     print('\n\n1. isEnzyme prediction evalueation metrics')
     print('*'*140+'\n')
     print('baslineName', '\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', '\t confusion Matrix')
-    caculateMetrix( groundtruth=evalutation_table.isenzyme_groundtruth, 
-                    predict=evalutation_table.isenzyme_slice, 
-                    baslineName='ours')
-    caculateMetrix( groundtruth=evalutation_table.isenzyme_groundtruth.astype('int'), 
-                    predict=evalutation_table.isenzyme_blast.fillna('0').astype('int') ,
-                    baslineName='blast')
-    caculateMetrix( groundtruth=evalutation_table.isenzyme_groundtruth.astype('int'), 
-                    predict=evalutation_table.isenzyme_ecpred.fillna('0').astype('int') ,
-                    baslineName='ecpred')
-    caculateMetrix( groundtruth=evalutation_table.isenzyme_groundtruth.astype('int'), 
-                    predict=evalutation_table.isenzyme_deepec ,
-                    baslineName='deepec')
+    ev_isenzyme={'ours':'isenzyme_slice', 'blast':'isenzyme_blast', 'ecpred':'isenzyme_ecpred', 'deepec':'isenzyme_deepec'}
 
-    
+    for k,v in ev_isenzyme.items():
+        caculateMetrix( groundtruth=evalutation_table.isenzyme_groundtruth, 
+                        predict=evalutation_table[v].fillna('0').astype('int'), 
+                        baselineName=k, 
+                        type='binary')
 
 
+    print('\n\n2. EC prediction evalueation metrics')
+    print('*'*140+'\n')
+    print('%12s'%'baslineName', '\t\t', 'accuracy','\t', 'precision-macro \t', 'recall-macro','\t', 'f1-macro')
+    ev_ec = {'ours':'ec_slice', 'blast':'ec_blast', 'ecpred':'ec_ecpred', 'deepec':'ec_deepec'}
+    for k, v in ev_ec.items():
+        caculateMetrix( groundtruth=evalutation_table.ec_groundtruth, 
+                predict=evalutation_table[v].fillna('NaN'), 
+                baselineName=k, 
+                type='multi')
+
+    print('\n\n3. Function counts evalueation metrics')
+    print('*'*140+'\n')
+    print('%12s'%'baslineName', '\t\t', 'accuracy','\t', 'precision-macro \t', 'recall-macro','\t', 'f1-macro')
+    ev_ec = {'ours':'functionCounts_slice', 'blast':'functionCounts_blast',  'ecpred':'functionCounts_ecpred','deepec':'functionCounts_deepec'}
+    evalutation_table['functionCounts_deepec'] = evalutation_table.ec_deepec.apply(lambda x :len(str(x).split(',')))
+    evalutation_table['functionCounts_ecpred'] = evalutation_table.ec_ecpred.apply(lambda x :len(str(x).split(',')))
+    for k, v in ev_ec.items():
+        caculateMetrix( groundtruth=evalutation_table.functionCounts_groundtruth, 
+                predict=evalutation_table[v].fillna('-1').astype('int'), 
+                baselineName=k, 
+                type='multi')
 
 if __name__ =='__main__':
 
@@ -156,8 +176,9 @@ if __name__ =='__main__':
         train=train,
         test=test
         )
+        
     evalutation_table = integrate_reslults(flat_table)
     
     evalueate_performance(evalutation_table)
 
-    print('success')
+    print('\n Evaluation Finished \n\n')
