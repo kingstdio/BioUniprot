@@ -47,9 +47,12 @@ def get_ec_train_set(train_data, ec_label_dict):
     Returns:
         [DataFrame]: [[train_x, trian_y]]
     """
-    train_data = train_data[train_data.isemzyme] #仅选用酶数据
-    train_data = train_data[train_data.functionCounts ==1] #仅选用单功能酶数据
-    # train_data = train_data[train_data.ec_specific_level ==4] #仅选用注释全的酶
+    if cfg.TRAIN_USE_ONLY_ENZYME:
+        train_data = train_data[train_data.isemzyme] #仅选用酶数据
+    if cfg.TRAIN_USE_ONLY_SINGLE_FUNCTION:
+        train_data = train_data[train_data.functionCounts ==1] #仅选用单功能酶数据
+    train_data = train_data[train_data.ec_specific_level == cfg.TRAIN_USE_SPCIFIC_EC_LEVEL] #选择酶标定级别
+
     train_data['ec_label'] = train_data.ec_number.apply(lambda x: ec_label_dict.get(x))
     train_X = train_data.iloc[:,5:1905]
     train_Y =train_data['ec_label']
@@ -76,7 +79,7 @@ def train_isenzyme(X,Y, model_file, vali_ratio=0.3, force_model_update=False):
     else:
         x_train, x_vali, y_train, y_vali = train_test_split(X,np.array(Y).ravel(),test_size=vali_ratio,random_state=1)
         eval_set = [(x_train, y_train), (x_vali, y_vali)]
-
+        
         model = XGBClassifier(
             objective='binary:logistic', 
             random_state=42, 

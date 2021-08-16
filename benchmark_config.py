@@ -19,6 +19,8 @@ FILE_TRANSFER_DICT = DATADIR + 'ec_transfer_dict.npy'
 
 ISENZYME_MODEL = MODELDIR+'/isenzyme.model'
 HOWMANY_MODEL = MODELDIR+'/howmany_enzyme.model'
+ISENZYME_DB_MODEL = MODELDIR + '/isenzyme.dmnd' #是否是酶blast 数据库
+EC_DB_MODEL = MODELDIR + 'ec.dmnd'              #EC号blast数据库
 
 
 FILE_BLAST_RESULTS = RESULTSDIR + r'test_blast_res.tsv'
@@ -31,8 +33,15 @@ FILE_EVL_RESULTS = RESULTSDIR + r'evaluation_table.xlsx'
 
 UPDATE_MODEL = True #强制模型更新标志
 VALIDATION_RATE = 0.1 #模型训练时验证集的比例
-SAMPLING_BIT = 6
 FEATURE_NUM = 1900
+
+# 训练参数
+SAMPLING_BIT = 6 #采样精度
+# SLICE
+TRAIN_USE_ONLY_SINGLE_FUNCTION = True #只用单功能酶
+TRAIN_USE_SPCIFIC_EC_LEVEL = 3  #训练用ec级别大于n位的
+TRAIN_USE_ONLY_ENZYME = True    #只用酶数据进行训练
+TRAIN_BLAST_IDENTITY_THRES = 20 #比对结果identity阈值
 
 
 BLAST_TABLE_HEAD = ['id', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'sstart', 'send',

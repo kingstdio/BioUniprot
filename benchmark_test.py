@@ -206,17 +206,15 @@ if __name__ == '__main__':
     slice_pred_rank, slice_pred_prob = sort_results(slice_pred)
 
     # 5.4 将结果翻译成EC号
-    slice_pred_ec = transla
-    slice_pred_ec = run_integragete_slice_pred(slice_pred=slice_pred_rank, ec2label_dict = dict_ec_label, test_set=test)
+    slice_pred_ec = translate_slice_pred(slice_pred=slice_pred_rank, ec2label_dict = dict_ec_label, test_set=test)
     slice_pred_ec['isEnzyme_pred_xg'] = isEnzyme_pred
     slice_pred_ec['functionCounts_pred_xg'] = howmany_Enzyme_pred
-
     slice_pred_ec = slice_pred_ec.merge(blast_res, on='id', how='left')
 
     # slice_pred_ec.to_csv(cfg.RESULTSDIR + 'singele_slice.tsv', sep='\t', index=None)
     
     # 6.将结果集成输出(slice_pred=slice_pred_ec, dict_ec_transfer=dict_ec_transfer)
-
+    slice_pred_ec = run_integrage(slice_pred=slice_pred_ec, dict_ec_transfer = dict_ec_transfer)    
     slice_pred_ec.to_csv(cfg.FILE_INTE_RESULTS, sep='\t', index=None)
 
     print('predict finished')
