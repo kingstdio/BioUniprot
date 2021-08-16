@@ -12,7 +12,7 @@ import benchmark_config as cfg
 
 
 #region 加载各种算法的预测结果，并拼合成一个大表格
-def load_res_data(file_slice, file_blast, file_deepec, file_ecpred, train, test):
+def load_res_data(file_slice, file_deepec, file_ecpred, train, test):
     """[加载各种算法的预测结果，并拼合成一个大表格]
 
     Args:
@@ -26,13 +26,29 @@ def load_res_data(file_slice, file_blast, file_deepec, file_ecpred, train, test)
     Returns:
         [DataFrame]: [拼合完成的大表格]
     """
+    isEnzyme_blast = bcommon.get_blast_prediction(  reference_db=cfg.FILE_ISENZYME_DB, 
+                                                train_frame=train, 
+                                                test_frame=test,
+                                                results_file=cfg.FILE_BLAST_ISENAYME_RESULTS,
+                                                type='isenzyme',
+                                                identity_thres=cfg.TRAIN_BLAST_IDENTITY_THRES
+                                            )
+
+    ec_blast = bcommon.get_blast_prediction(  reference_db=cfg.FILE_EC_DB, 
+                                                train_frame=train, 
+                                                test_frame=test,
+                                                results_file=cfg.FILE_BLAST_ISENAYME_RESULTS,
+                                                type='ec',
+                                                identity_thres=cfg.TRAIN_BLAST_IDENTITY_THRES
+                                            )
     res_slice = pd.read_csv(file_slice, sep='\t')
-    res_blast = pd.read_csv(file_blast, sep='\t',  names =cfg.BLAST_TABLE_HEAD)
-    res_blast = bcommon.blast_add_label(blast_df=res_blast, trainset=train)
+    # res_blast = pd.read_csv(file_blast, sep='\t',  names =cfg.BLAST_TABLE_HEAD)
+    # res_blast = bcommon.blast_add_label(blast_df=res_blast, trainset=train)
     ground_truth = test.iloc[:, np.r_[0,1,2,3]]
 
     big_res = res_slice.merge(ground_truth, on='id', how='left')
-    big_res = big_res.merge(res_blast, on='id', how='left') 
+    big_res = big_res.merge(isEnzyme_blast, on='id', how='left') 
+    big_res = big_res.merge(ec_blast, on='id', how='left') 
 
     # DeepEC
     res_deepec = pd.read_csv(file_deepec, sep='\t',names=['id', 'ec_number'], header=0 )
@@ -159,18 +175,16 @@ def evalueate_performance(evalutation_table):
 if __name__ =='__main__':
 
     # 2. 读入数据
-    train = pd.read_feather(cfg.DATADIR+'train.feather').iloc[:,:4]
-    test = pd.read_feather(cfg.DATADIR+'test.feather').iloc[:,:4]
-    train_fasta = cfg.DATADIR+'train.fasta'
-    test_fasta = cfg.DATADIR+'test.fasta'
-
+    train = pd.read_feather(cfg.DATADIR+'train.feather').iloc[:,:6]
+    test = pd.read_feather(cfg.DATADIR+'test.feather').iloc[:,:6]
+    test = test[(test.ec_specific_level>=cfg.TRAIN_USE_SPCIFIC_EC_LEVEL) |(~test.isemzyme)]
+    test.reset_index(drop=True, inplace=True)
     # EC-标签字典
     dict_ec_label = np.load(cfg.DATADIR + 'ec_label_dict.npy', allow_pickle=True).item()
     file_blast_res = cfg.RESULTSDIR + r'test_blast_res.tsv'
 
     flat_table = load_res_data(
         file_slice=cfg.FILE_INTE_RESULTS,
-        file_blast=cfg.FILE_BLAST_RESULTS,
         file_deepec=cfg.FILE_DEEPEC_RESULTS,
         file_ecpred=cfg.FILE_ECPRED_RESULTS,
         train=train,

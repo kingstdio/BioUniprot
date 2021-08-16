@@ -18,7 +18,7 @@ def get_enzyme_train_set(traindata):
     Returns:
         [DataFrame]: [trianX, trainY]
     """
-    train_X = traindata.iloc[:,5:]
+    train_X = traindata.iloc[:,6:]
     train_Y = traindata['isemzyme'].astype('int')
     return train_X, train_Y
 #endregion
@@ -32,7 +32,7 @@ def get_howmany_train_set(train_data):
         [DataFrame]: [[train_x, trian_y]]
     """
     train_data = train_data[train_data.isemzyme] #仅选用酶数据
-    train_X = train_data.iloc[:,5:]
+    train_X = train_data.iloc[:,6:]
     train_Y =train_data['functionCounts'].astype('int')
     return train_X, pd.DataFrame(train_Y)
 
@@ -51,10 +51,11 @@ def get_ec_train_set(train_data, ec_label_dict):
         train_data = train_data[train_data.isemzyme] #仅选用酶数据
     if cfg.TRAIN_USE_ONLY_SINGLE_FUNCTION:
         train_data = train_data[train_data.functionCounts ==1] #仅选用单功能酶数据
-    train_data = train_data[train_data.ec_specific_level == cfg.TRAIN_USE_SPCIFIC_EC_LEVEL] #选择酶标定级别
-
+    train_data = train_data[train_data.ec_specific_level >= cfg.TRAIN_USE_SPCIFIC_EC_LEVEL] #选择酶标定级别
     train_data['ec_label'] = train_data.ec_number.apply(lambda x: ec_label_dict.get(x))
-    train_X = train_data.iloc[:,5:1905]
+    train_data.reset_index(drop=True, inplace=True)
+    bcommon.make_diamond_db(dbtable=train_data.iloc[:, np.r_[0,5]],to_db_file=cfg.FILE_EC_DB)
+    train_X = train_data.iloc[:, 6:1907]
     train_Y =train_data['ec_label']
     return train_X, pd.DataFrame(train_Y)
 
@@ -79,7 +80,7 @@ def train_isenzyme(X,Y, model_file, vali_ratio=0.3, force_model_update=False):
     else:
         x_train, x_vali, y_train, y_vali = train_test_split(X,np.array(Y).ravel(),test_size=vali_ratio,random_state=1)
         eval_set = [(x_train, y_train), (x_vali, y_vali)]
-        
+
         model = XGBClassifier(
             objective='binary:logistic', 
             random_state=42, 
@@ -174,6 +175,7 @@ if __name__ =="__main__":
     #2. 「酶｜非酶」模型训练
     print('step 2 train isEnzyme model')
     enzyme_X, enzyme_Y = get_enzyme_train_set(train)
+    bcommon.make_diamond_db(dbtable=train.iloc[:, np.r_[0,5]],to_db_file=cfg.FILE_ISENZYME_DB) # 创建是否是酶blast数据库
     train_isenzyme(X=enzyme_X, Y=enzyme_Y, model_file= cfg.ISENZYME_MODEL, force_model_update=cfg.UPDATE_MODEL)
 
     #3. 「几功能酶训练模型」训练
@@ -188,7 +190,7 @@ if __name__ =="__main__":
     else:
         dict_ec_label = make_ec_label(train_label=train['ec_number'], test_label=test['ec_number'], file_save= cfg.FILE_EC_LABEL_DICT, force_model_update=cfg.UPDATE_MODEL)
 
-    ec_X, ec_Y = get_ec_train_set(train_data=train, ec_label_dict=dict_ec_label )
+    ec_X, ec_Y = get_ec_train_set(train_data=train, ec_label_dict=dict_ec_label)
 
     print('step 4 prepare slice files')
     #5. 构建Slice文件

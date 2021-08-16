@@ -106,6 +106,21 @@ def getblast(ref_fasta, query_fasta, results_file):
 
 # endregion
 
+#region 创建diamond数据库
+def make_diamond_db(dbtable, to_db_file):
+    """[创建diamond数据库]
+
+    Args:
+        dbtable ([DataTable]): [[ID，SEQ]DataFame]
+        to_db_file ([string]): [数据库文件]
+    """
+    save_table2fasta(dataset=dbtable, file_out=cfg.TEMPDIR+'dbtable.fasta')
+    cmd = r'diamond makedb --in {0} -d {1}'.format(cfg.TEMPDIR+'dbtable.fasta', to_db_file)
+    os.system(cmd)
+    cmd = r'rm -rf {0}'.format(cfg.TEMPDIR+'dbtable.fasta')
+    os.system(cmd)
+#endregion 
+
 #region 为blast序列比对添加结果标签
 def blast_add_label(blast_df, trainset,):
     """[为blast序列比对添加结果标签]
@@ -126,6 +141,28 @@ def blast_add_label(blast_df, trainset,):
                                               })
     return res_df.iloc[:,np.r_[0,13:16]]
 #endregion
+
+
+def get_blast_prediction(reference_db, train_frame, test_frame, results_file, type='isenzyme', identity_thres=0.2):
+
+    save_table2fasta(dataset=test_frame.iloc[:,np.r_[0,5]], file_out=cfg.TEMPDIR+'test.fasta')
+    cmd = r'diamond blastp -d {0}  -q  {1} -o {2} -b8 -c1 -k 1'.format(reference_db, cfg.TEMPDIR+'test.fasta', results_file)
+    print(cmd)
+    os.system(cmd)
+    res_data = pd.read_csv(results_file, sep='\t', names=cfg.BLAST_TABLE_HEAD)
+    res_data = res_data[res_data.pident >= identity_thres] # 按显著性阈值过滤
+    res_df = res_data.merge(train_frame, left_on='sseqid', right_on='id', how='left')
+    res_df = res_df.rename(columns={'id_x': 'id',
+                                            'isemzyme': 'isemzyme_blast',
+                                            'functionCounts': 'functionCounts_blast',
+                                            'ec_number': 'ec_number_blast',
+                                            'ec_specific_level': 'ec_specific_level_blast'
+                                            })
+    if type =='isenzyme':
+        return res_df.iloc[:,np.r_[0,13]]
+    
+    if type == 'ec':
+        return res_df.iloc[:,np.r_[0,14:16]]
 
 #region 打印模型的重要指标，排名topN指标
 def importance_features_top(model, x_train, topN=10):
