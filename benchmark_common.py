@@ -19,10 +19,10 @@ def prepare_slice_file(x_data, y_data, x_file, y_file, ec_label_dict):
 
     """
 
-    if os.path.exists(x_file) == False:
+    if (os.path.exists(x_file) == False) or (cfg.UPDATE_MODEL ==True):
          to_file_matrix(file=x_file, ds=x_data.round(cfg.SAMPLING_BIT), col_num=cfg.FEATURE_NUM, stype='feature')
 
-    if os.path.exists(y_file) == False:
+    if (os.path.exists(y_file) == False) or (cfg.UPDATE_MODEL ==True):
         y_data['tags'] = 1
         to_file_matrix(
             file=y_file,
@@ -43,7 +43,7 @@ def to_file_matrix(file, ds, col_num, stype='label'):
         col_num ([int]): [有多少列]
         stype (str, optional): [文件类型：feature，label]. Defaults to 'label'.
     """
-    if os.path.exists(file):
+    if os.path.exists(file) & (cfg.UPDATE_MODEL ==False):
         return 'file exist'
     
     if stype== 'label':
@@ -134,16 +134,16 @@ def blast_add_label(blast_df, trainset,):
     """
     res_df = blast_df.merge(trainset, left_on='sseqid', right_on='id', how='left')
     res_df = res_df.rename(columns={'id_x': 'id',
-                                              'isemzyme': 'isemzyme_blast',
+                                              'isemzyme': 'isenzyme_blast',
                                               'functionCounts': 'functionCounts_blast',
-                                              'ec_number': 'ec_number_blast',
+                                              'ec_number': 'ec_blast',
                                               'ec_specific_level': 'ec_specific_level_blast'
                                               })
     return res_df.iloc[:,np.r_[0,13:16]]
 #endregion
 
 
-def get_blast_prediction(reference_db, train_frame, test_frame, results_file, type='isenzyme', identity_thres=0.2):
+def get_blast_prediction(reference_db, train_frame, test_frame, results_file, identity_thres=0.2):
 
     save_table2fasta(dataset=test_frame.iloc[:,np.r_[0,5]], file_out=cfg.TEMPDIR+'test.fasta')
     cmd = r'diamond blastp -d {0}  -q  {1} -o {2} -b8 -c1 -k 1'.format(reference_db, cfg.TEMPDIR+'test.fasta', results_file)
@@ -158,11 +158,10 @@ def get_blast_prediction(reference_db, train_frame, test_frame, results_file, ty
                                             'ec_number': 'ec_number_blast',
                                             'ec_specific_level': 'ec_specific_level_blast'
                                             })
-    if type =='isenzyme':
-        return res_df.iloc[:,np.r_[0,13]]
+
+    return res_df.iloc[:,np.r_[0,2,13:17]]
     
-    if type == 'ec':
-        return res_df.iloc[:,np.r_[0,14:16]]
+
 
 #region 打印模型的重要指标，排名topN指标
 def importance_features_top(model, x_train, topN=10):

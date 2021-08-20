@@ -159,6 +159,7 @@ scratch/
 /baselines/slice
 /baselines/Tree_Extreme_Classifiers
 /baselines/deepec
+/baselines/
 
 diamond
 *temp

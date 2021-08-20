@@ -87,7 +87,7 @@ def get_test_set(data):
     Returns:
         [DataFrame]: [划分好的XY]
     """
-    testX = data.iloc[:,6:]
+    testX = data.iloc[:,7:]
     testY = data.iloc[:,:6]
     return testX, testY
 #endregion
@@ -127,22 +127,25 @@ def run_integrage(slice_pred, dict_ec_transfer):
         [DataFrame]: [集成后的最终结果]
     """
     # 取top10,因为最多有10功能酶
-    slice_pred = slice_pred.iloc[:,np.r_[0:11, 21:26]]
+    slice_pred = slice_pred.iloc[:,np.r_[0:11, 21:28]]
 
     #酶集成标签
-    slice_pred['is_enzyme_i'] = slice_pred.apply(lambda x: int(x.isemzyme_blast) if str(x.isemzyme_blast)!='nan' else x.isEnzyme_pred_xg, axis=1)
+    with pd.option_context('mode.chained_assignment', None):
+        slice_pred['is_enzyme_i'] = slice_pred.apply(lambda x: int(x.isemzyme_blast) if str(x.isemzyme_blast)!='nan' else x.isEnzyme_pred_xg, axis=1)
 
     # 清空非酶的EC预测标签
     for i in range(9):
-        slice_pred['top'+str(i)] = slice_pred.apply(lambda x: '' if x.is_enzyme_i==0 else x['top'+str(i)], axis=1)
-        slice_pred['top0'] = slice_pred.apply(lambda x: x.ec_number_blast if str(x.ec_number_blast)!='nan' else x.top0, axis=1)
+        with pd.option_context('mode.chained_assignment', None):
+            slice_pred['top'+str(i)] = slice_pred.apply(lambda x: '' if x.is_enzyme_i==0 else x['top'+str(i)], axis=1)
+            slice_pred['top0'] = slice_pred.apply(lambda x: x.ec_number_blast if str(x.ec_number_blast)!='nan' else x.top0, axis=1)
 
     # 清空有比对结果的预测标签
     for i in range(1,10):
-        slice_pred['top'+str(i)] = slice_pred.apply(lambda x: '' if str(x.ec_number_blast)!='nan' else x['top'+str(i)], axis=1) #有比对结果的
-        slice_pred['top'+str(i)] = slice_pred.apply(lambda x: '' if int(x.functionCounts_pred_xg) < int(i+1) else x['top'+str(i)], axis=1) #无比对结果的
-    
-    slice_pred['top0']=slice_pred['top0'].apply(lambda x: '' if x=='-' else x)
+        with pd.option_context('mode.chained_assignment', None):
+            slice_pred['top'+str(i)] = slice_pred.apply(lambda x: '' if str(x.ec_number_blast)!='nan' else x['top'+str(i)], axis=1) #有比对结果的
+            slice_pred['top'+str(i)] = slice_pred.apply(lambda x: '' if int(x.functionCounts_pred_xg) < int(i+1) else x['top'+str(i)], axis=1) #无比对结果的
+    with pd.option_context('mode.chained_assignment', None):
+        slice_pred['top0']=slice_pred['top0'].apply(lambda x: '' if x=='-' else x)
     
     # 将EC号拆开
     for index, row in slice_pred.iterrows():
@@ -154,10 +157,24 @@ def run_integrage(slice_pred, dict_ec_transfer):
     slice_pred.reset_index(drop=True, inplace=True)
 
     # 添加几功能酶预测结果
-    slice_pred['pred_functionCounts'] = slice_pred.apply(lambda x: int(x['functionCounts_blast']) if str(x['functionCounts_blast'])!='nan' else x.functionCounts_pred_xg ,axis=1)
+    with pd.option_context('mode.chained_assignment', None):
+        slice_pred['pred_functionCounts'] = slice_pred.apply(lambda x: int(x['functionCounts_blast']) if str(x['functionCounts_blast'])!='nan' else x.functionCounts_pred_xg ,axis=1)
     # 取最终的结果并改名
-    colnames=['id', 'pred_ec1', 'pred_ec2', 'pred_ec3', 'pred_ec4', 'pred_ec5' , 'pred_ec6', 'pred_ec7', 'pred_ec8', 'pred_ec9', 'pred_ec10' ,'pred_isEnzyme', 'pred_functionCounts']
-    slice_pred=slice_pred.iloc[:, np.r_[0:11, 16:18]]
+    colnames=[  'id', 
+                'pred_ec1', 
+                'pred_ec2', 
+                'pred_ec3', 
+                'pred_ec4', 
+                'pred_ec5' , 
+                'pred_ec6', 
+                'pred_ec7', 
+                'pred_ec8', 
+                'pred_ec9', 
+                'pred_ec10',
+                'pred_isEnzyme', 
+                'pred_functionCounts'
+            ]
+    slice_pred=slice_pred.iloc[:, np.r_[0:11, 18,19]]
     slice_pred.columns = colnames
 
     # 计算EC转移情况
@@ -177,8 +194,6 @@ if __name__ == '__main__':
     print('step 1: loading data')
     train = pd.read_feather(cfg.TRAIN_FEATURE).iloc[:,:5]
     test = pd.read_feather(cfg.TEST_FEATURE)
-    test = test[(test.ec_specific_level>=cfg.TRAIN_USE_SPCIFIC_EC_LEVEL) |(~test.isemzyme)]
-    test.reset_index(drop=True, inplace=True)
 
     dict_ec_label = np.load(cfg.FILE_EC_LABEL_DICT, allow_pickle=True).item() #EC-标签字典
     dict_ec_transfer = np.load(cfg.FILE_TRANSFER_DICT, allow_pickle=True).item() #EC-转移字典
@@ -187,24 +202,26 @@ if __name__ == '__main__':
 
     # blast_res = bcommon.getblast(query_fasta=cfg.TEST_FASTA, ref_fasta=cfg.TRAIN_FASTA, results_file=cfg.FILE_BLAST_RESULTS)
     # blast_res = bcommon.blast_add_label(blast_df=blast_res, trainset=train)
+    print('step 2 get blast results')
+    blast_res = bcommon.get_blast_prediction(  reference_db=cfg.FILE_BLAST_TRAIN_DB, 
+                                                train_frame=train, 
+                                                test_frame=test.iloc[:,0:7],
+                                                results_file=cfg.FILE_BLAST_RESULTS,
+                                                identity_thres=cfg.TRAIN_BLAST_IDENTITY_THRES
+                                            )
 
     # 3.获取酶-非酶预测结果
-
-    # isEnzyme_blast = bcommon.
+    print('step 3. get isEnzyme results')
     testX, testY = get_test_set(data=test)
     isEnzyme_pred, isEnzyme_pred_prob = get_isEnzymeRes(querydata=testX, model_file=cfg.ISENZYME_MODEL)
-    isEnzyme_blast = bcommon.get_blast_prediction(  reference_db=cfg.FILE_ISENZYME_DB, 
-                                                    train_frame=train, 
-                                                    test_frame=test.iloc[:,0:7],
-                                                    results_file=cfg.FILE_BLAST_ISENAYME_RESULTS,
-                                                    type='isenzyme',
-                                                    identity_thres=cfg.TRAIN_BLAST_IDENTITY_THRES
-                                                )
+
 
     # 4. 预测几功能酶预测结果
+    print('step 4. get howmany functions ')
     howmany_Enzyme_pred, howmany_Enzyme_pred_prob = get_howmany_Enzyme(querydata=testX, model_file=cfg.HOWMANY_MODEL)
 
     # 5.获取Slice预测结果
+    print('step 5. get EC prediction results')
     # 5.1 准备slice所用文件
     bcommon.prepare_slice_file( x_data=testX, 
                                 y_data=testY['ec_number'], 
@@ -222,18 +239,11 @@ if __name__ == '__main__':
     slice_pred_ec = translate_slice_pred(slice_pred=slice_pred_rank, ec2label_dict = dict_ec_label, test_set=test)
     slice_pred_ec['isEnzyme_pred_xg'] = isEnzyme_pred
     slice_pred_ec['functionCounts_pred_xg'] = howmany_Enzyme_pred
-    slice_pred_ec = slice_pred_ec.merge(isEnzyme_blast, on='id', how='left')
+    slice_pred_ec = slice_pred_ec.merge(blast_res, on='id', how='left')
 
     # slice_pred_ec.to_csv(cfg.RESULTSDIR + 'singele_slice.tsv', sep='\t', index=None)
     # 5.5 获取blast EC预测结果
-    ec_blast = bcommon.get_blast_prediction(  reference_db=cfg.FILE_EC_DB, 
-                                                    train_frame=train, 
-                                                    test_frame=test.iloc[:,0:7],
-                                                    results_file=cfg.FILE_BLAST_ISENAYME_RESULTS,
-                                                    type='ec',
-                                                    identity_thres=cfg.TRAIN_BLAST_IDENTITY_THRES
-                                                )
-    slice_pred_ec = slice_pred_ec.merge(ec_blast, on='id', how='left')
+
     # 6.将结果集成输出(slice_pred=slice_pred_ec, dict_ec_transfer=dict_ec_transfer)
     slice_pred_ec = run_integrage(slice_pred=slice_pred_ec, dict_ec_transfer = dict_ec_transfer)    
     slice_pred_ec.to_csv(cfg.FILE_INTE_RESULTS, sep='\t', index=None)

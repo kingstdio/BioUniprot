@@ -21,7 +21,7 @@ def read_file_from_gzip(file_in_path, file_out_path, extract_type):
     """
     table_head = [  'id', 
                     'name',
-                    'isemzyme',
+                    'isenzyme',
                     'isMultiFunctional', 
                     'functionCounts', 
                     'ec_number', 

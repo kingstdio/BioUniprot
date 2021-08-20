@@ -18,7 +18,7 @@ def get_enzyme_train_set(traindata):
     Returns:
         [DataFrame]: [trianX, trainY]
     """
-    train_X = traindata.iloc[:,6:]
+    train_X = traindata.iloc[:,7:]
     train_Y = traindata['isemzyme'].astype('int')
     return train_X, train_Y
 #endregion
@@ -32,7 +32,7 @@ def get_howmany_train_set(train_data):
         [DataFrame]: [[train_x, trian_y]]
     """
     train_data = train_data[train_data.isemzyme] #仅选用酶数据
-    train_X = train_data.iloc[:,6:]
+    train_X = train_data.iloc[:,7:]
     train_Y =train_data['functionCounts'].astype('int')
     return train_X, pd.DataFrame(train_Y)
 
@@ -51,11 +51,12 @@ def get_ec_train_set(train_data, ec_label_dict):
         train_data = train_data[train_data.isemzyme] #仅选用酶数据
     if cfg.TRAIN_USE_ONLY_SINGLE_FUNCTION:
         train_data = train_data[train_data.functionCounts ==1] #仅选用单功能酶数据
-    train_data = train_data[train_data.ec_specific_level >= cfg.TRAIN_USE_SPCIFIC_EC_LEVEL] #选择酶标定级别
+    
+    train_data = train_data[(train_data.ec_specific_level >= cfg.TRAIN_USE_SPCIFIC_EC_LEVEL) |(train_data.ec_specific_level ==0)]
+    
     train_data['ec_label'] = train_data.ec_number.apply(lambda x: ec_label_dict.get(x))
     train_data.reset_index(drop=True, inplace=True)
-    bcommon.make_diamond_db(dbtable=train_data.iloc[:, np.r_[0,5]],to_db_file=cfg.FILE_EC_DB)
-    train_X = train_data.iloc[:, 6:1907]
+    train_X = train_data.iloc[:, 7:1907]
     train_Y =train_data['ec_label']
     return train_X, pd.DataFrame(train_Y)
 
@@ -87,7 +88,8 @@ def train_isenzyme(X,Y, model_file, vali_ratio=0.3, force_model_update=False):
             use_label_encoder=False, 
             n_jobs=-2, 
             eval_metric='mlogloss',
-            max_depth=6
+            max_depth=6,
+            n_estimators= cfg.TRAIN_HOWMANY_ENZYME_LEARNING_STEPS
             )
         
         print(model)
@@ -123,7 +125,8 @@ def train_howmany_enzyme(data_x, data_y, model_file, vali_ratio=0.3, force_model
                                 max_depth=6, 
                                 objective='multi:softmax', 
                                 num_class=10, 
-                                use_label_encoder=False
+                                use_label_encoder=False,
+                                n_estimators=cfg.TRAIN_HOWMANY_ENZYME_LEARNING_STEPS
                             )
         print("-" * 100)
         print("几功能酶xgboost模型：", model)
@@ -175,8 +178,8 @@ if __name__ =="__main__":
     #2. 「酶｜非酶」模型训练
     print('step 2 train isEnzyme model')
     enzyme_X, enzyme_Y = get_enzyme_train_set(train)
-    bcommon.make_diamond_db(dbtable=train.iloc[:, np.r_[0,5]],to_db_file=cfg.FILE_ISENZYME_DB) # 创建是否是酶blast数据库
     train_isenzyme(X=enzyme_X, Y=enzyme_Y, model_file= cfg.ISENZYME_MODEL, force_model_update=cfg.UPDATE_MODEL)
+
 
     #3. 「几功能酶训练模型」训练
     print('step 3 train how many enzymes model')
@@ -199,5 +202,8 @@ if __name__ =="__main__":
     print('step 6 trainning slice model')
     #6. 训练Slice模型
     train_ec_slice(trainX=cfg.FILE_SLICE_TRAINX, trainY=cfg.FILE_SLICE_TRAINY, modelPath=cfg.MODELDIR)
+
+    #7. 创建blast比对数据库
+    bcommon.make_diamond_db(dbtable=train.iloc[:, np.r_[0,5]],to_db_file=cfg.FILE_BLAST_TRAIN_DB) # 创建是否是酶blast数据库
 
     print('train finished')
