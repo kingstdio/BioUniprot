@@ -46,7 +46,7 @@ FEATURE_NUM = 1900
 TRAIN_USE_ONLY_SINGLE_FUNCTION = False           #只用单功能酶
 TRAIN_USE_SPCIFIC_EC_LEVEL = 2                  #训练用ec级别大于n位的
 TRAIN_USE_ONLY_ENZYME = True                    #只用酶数据进行训练
-TRAIN_BLAST_IDENTITY_THRES = 0                  #比对结果identity阈值
+TRAIN_BLAST_IDENTITY_THRES = 40                  #比对结果identity阈值
 
 # XGBoost
 TRAIN_ISENZYME_LEARNING_STEPS = 100             #是否是酶学习次数

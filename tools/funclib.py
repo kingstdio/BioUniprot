@@ -162,21 +162,21 @@ def static_interval(data, span):
         
 
         
-def getblast(train, test):
+# def getblast(train, test):
     
-    table2fasta(train, '/tmp/train.fasta')
-    table2fasta(test, '/tmp/test.fasta')
+#     table2fasta(train, '/tmp/train.fasta')
+#     table2fasta(test, '/tmp/test.fasta')
     
-    cmd1 = r'diamond makedb --in /tmp/train.fasta -d /tmp/train.dmnd'
-    cmd2 = r'diamond blastp -d /tmp/train.dmnd  -q  /tmp/test.fasta -o /tmp/test_fasta_results.tsv -b5 -c1 -k 1'
-    cmd3 = r'rm -rf /tmp/*.fasta /tmp/*.dmnd /tmp/*.tsv'
-    print(cmd1)
-    os.system(cmd1)
-    print(cmd2)
-    os.system(cmd2)
-    res_data = pd.read_csv('/tmp/test_fasta_results.tsv', sep='\t', names=['id', 'sseqid', 'pident', 'length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore'])
-    os.system(cmd3)
-    return res_data
+#     cmd1 = r'diamond makedb --in /tmp/train.fasta -d /tmp/train.dmnd'
+#     cmd2 = r'diamond blastp -d /tmp/train.dmnd  -q  /tmp/test.fasta -o /tmp/test_fasta_results.tsv -b5 -c1 -k 1'
+#     cmd3 = r'rm -rf /tmp/*.fasta /tmp/*.dmnd /tmp/*.tsv'
+#     print(cmd1)
+#     os.system(cmd1)
+#     print(cmd2)
+#     os.system(cmd2)
+#     res_data = pd.read_csv('/tmp/test_fasta_results.tsv', sep='\t', names=['id', 'sseqid', 'pident', 'length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore'])
+#     os.system(cmd3)
+#     return res_data
 
 def getblast_fasta(trainfasta, testfasta):
     

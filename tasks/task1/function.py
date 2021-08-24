@@ -17,7 +17,7 @@ def table2fasta(table, file_out):
         file.write('>{0}\n'.format(row['id']))
         file.write('{0}\n'.format(row['seq']))
     file.close()
-    print('Write finished')
+    print('{0}\t Write finished!'.format(file_out))
     
 #氨基酸字典(X未知项用于数据对齐)
 prot_dict = dict(

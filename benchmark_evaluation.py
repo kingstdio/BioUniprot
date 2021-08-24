@@ -2,8 +2,6 @@ from operator import index
 from random import sample
 import pandas as pd
 import numpy as np
-import joblib
-import os
 from sklearn import metrics
 from tools import ucTools
 from pandas._config.config import reset_option
@@ -73,6 +71,7 @@ def load_res_data(file_slice, file_blast, file_deepec, file_ecpred,file_catfam, 
     big_res['functionCounts_priam'] = big_res.ec_priam.apply(lambda x :len(str(x).split(',')))
     
     big_res=big_res.sort_values(by=['isemzyme', 'id'], ascending=False)
+    big_res = big_res.drop_duplicates(subset='id')
     big_res.reset_index(drop=True, inplace=True)
     return big_res
 #endregion
@@ -166,8 +165,8 @@ def evalueate_performance(evalutation_table):
                 }
 
     for k,v in ev_isenzyme.items():
-        caculateMetrix( groundtruth=evalutation_table.isenzyme_groundtruth, 
-                        predict=evalutation_table[v].fillna('0').astype('int'), 
+        caculateMetrix( groundtruth=evalutation_table.isenzyme_groundtruth.astype('int'), 
+                        predict=evalutation_table[v].fillna('1').astype('int'), 
                         baselineName=k, 
                         type='binary')
 

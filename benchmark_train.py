@@ -1,4 +1,5 @@
 from pickle import FALSE
+from tasks.task1.function import table2fasta
 import pandas as pd
 import numpy as np
 import joblib
@@ -174,6 +175,11 @@ if __name__ =="__main__":
     print('step 1 loading data')
     train = pd.read_feather(cfg.TRAIN_FEATURE)
     test = pd.read_feather(cfg.TEST_FEATURE)
+
+    # 2. 写入fasta文件
+
+    table2fasta(table=train,file_out=cfg.TRAIN_FASTA)
+    table2fasta(table=test, file_out=cfg.TEST_FASTA)
 
     #2. 「酶｜非酶」模型训练
     print('step 2 train isEnzyme model')
