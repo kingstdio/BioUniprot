@@ -39,8 +39,15 @@ UPDATE_MODEL = True #强制模型更新标志
 
 
 
+
 # 训练参数
 SAMPLING_BIT = 6 #采样精度
+
+FEATURE_SET ={  'one-hot':1,
+                'uni-rep':2,
+                'esm':3
+            }
+
 # SLICE
 FEATURE_NUM = 1900
 TRAIN_USE_ONLY_SINGLE_FUNCTION = False           #只用单功能酶
@@ -52,6 +59,8 @@ TRAIN_BLAST_IDENTITY_THRES = 40                  #比对结果identity阈值
 TRAIN_ISENZYME_LEARNING_STEPS = 100             #是否是酶学习次数
 TRAIN_HOWMANY_ENZYME_LEARNING_STEPS = 100        #几功能酶学习次数
 VALIDATION_RATE = 0.3 #模型训练时验证集的比例    
+
+
 
 
 BLAST_TABLE_HEAD = ['id', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'sstart', 'send',

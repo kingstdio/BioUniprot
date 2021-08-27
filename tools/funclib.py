@@ -47,12 +47,20 @@ prot_dict = dict(
                 )
 
 # one-hot 编码
-def dna_onehot(Xdna):
+def dna_onehot_outdateed(Xdna):
     listtmp = list()
     for index, row in Xdna.iterrows():
         row = [prot_dict[x] if x in prot_dict else x for x in row['seq']]
         listtmp.append(row)
     return pd.DataFrame(listtmp)
+
+# one-hot 编码
+def dna_onehot(Xdna):
+    listtmp = []
+    listtmp =Xdna.seq.parallel_apply(lambda x: np.array([prot_dict.get(item) for item in x]))
+    listtmp = pd.DataFrame(np.stack(listtmp))
+    listtmp = pd.concat( [Xdna[['id', 'isemzyme']], listtmp], axis=1)
+    return listtmp
 
 
 def lrmain(X_train_std, Y_train, X_test_std, Y_test):
