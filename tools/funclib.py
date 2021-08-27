@@ -59,7 +59,7 @@ def dna_onehot(Xdna):
     listtmp = []
     listtmp =Xdna.seq.parallel_apply(lambda x: np.array([prot_dict.get(item) for item in x]))
     listtmp = pd.DataFrame(np.stack(listtmp))
-    listtmp = pd.concat( [Xdna[['id', 'isemzyme']], listtmp], axis=1)
+    listtmp = pd.concat( [Xdna.iloc[:,0:2], listtmp], axis=1)
     return listtmp
 
 
