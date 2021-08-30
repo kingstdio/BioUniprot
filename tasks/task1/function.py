@@ -35,7 +35,12 @@ def dna_onehot(Xdna):
 
 
 def lrmain(X_train_std, Y_train, X_test_std, Y_test):
-    logreg = linear_model.LogisticRegression(solver = 'liblinear', n_jobs=32)
+    logreg = linear_model.LogisticRegression(
+                                                solver = 'lbfgs',
+                                                multi_class='auto', 
+                                                n_jobs=-2,
+                                                verbose=1
+                                            )
     logreg.fit(X_train_std, Y_train)
     predict = logreg.predict(X_test_std)
     lrpredpro = logreg.predict_proba(X_test_std)
