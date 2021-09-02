@@ -2,6 +2,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import normalize
 from sklearn import metrics
+from sklearn.metrics import multilabel_confusion_matrix
 from sklearn import linear_model, datasets
 from sklearn.svm import SVC
 from sklearn import tree
@@ -63,19 +64,18 @@ def dna_onehot(Xdna):
     return listtmp
 
 
-def lrmain(X_train_std, Y_train, X_test_std, Y_test):
+def lrmain(X_train_std, Y_train, X_test_std, Y_test, type='binary'):
     logreg = linear_model.LogisticRegression(
                                             solver = 'lbfgs',
                                             multi_class='auto', 
                                             n_jobs=-2,
-                                            verbose=1
+                                            verbose=False
                                         )
     logreg.fit(X_train_std, Y_train)
     predict = logreg.predict(X_test_std)
     lrpredpro = logreg.predict_proba(X_test_std)
     groundtruth = Y_test
-    predictprob = lrpredpro[:,1]
-    return groundtruth, predict, predictprob
+    return groundtruth, predict, lrpredpro
 
 def svmmain(X_train_std, Y_train, X_test_std, Y_test):
     svcmodel = SVC(probability=True, kernel='rbf', tol=0.001)
@@ -83,16 +83,31 @@ def svmmain(X_train_std, Y_train, X_test_std, Y_test):
     predict = svcmodel.predict(X_test_std)
     predictprob =svcmodel.predict_proba(X_test_std)
     groundtruth = Y_test
-    return groundtruth, predict, predictprob[:,1]
+    return groundtruth, predict, predictprob
 
+def xgmain(X_train_std, Y_train, X_test_std, Y_test, type='binary'):
+
+    x_train, x_vali, y_train, y_vali = train_test_split(X_train_std, Y_train, test_size=0.2, random_state=1)
+    eval_set = [(x_train, y_train), (x_vali, y_vali)]
+
+    if type=='binary':
+        model = XGBClassifier(objective='binary:logistic', random_state=42, use_label_encoder=False, n_jobs=-2, eval_metric='mlogloss')
+        model.fit(x_train, y_train.ravel(), eval_metric="logloss", eval_set=eval_set, verbose=True)
+    if type=='multi':
+        model = XGBClassifier(
+                        min_child_weight=6, 
+                        max_depth=6, 
+                        objective='multi:softmax', 
+                        num_class=len(set(Y_train)), 
+                        use_label_encoder=False,
+                        n_estimators=110
+                    )
+        model.fit(x_train, y_train, eval_metric="mlogloss", eval_set=eval_set, verbose=False)
     
-def xgmain(X_train_std, Y_train, X_test_std, Y_test):
-    model = XGBClassifier(objective='binary:logistic', random_state=42, use_label_encoder=False, n_jobs=-2, eval_metric='mlogloss')
-    model.fit(X_train_std, Y_train.ravel())
     predict = model.predict(X_test_std)
     predictprob = model.predict_proba(X_test_std)
     groundtruth = Y_test
-    return groundtruth, predict, predictprob[:,1]
+    return groundtruth, predict, predictprob
 
 def dtmain(X_train_std, Y_train, X_test_std, Y_test):
     model = tree.DecisionTreeClassifier()
@@ -100,7 +115,7 @@ def dtmain(X_train_std, Y_train, X_test_std, Y_test):
     predict = model.predict(X_test_std)
     predictprob = model.predict_proba(X_test_std)
     groundtruth = Y_test
-    return groundtruth, predict, predictprob[:,1]
+    return groundtruth, predict, predictprob
 
 def rfmain(X_train_std, Y_train, X_test_std, Y_test):
     model = RandomForestClassifier(oob_score=True, random_state=10, n_jobs=-2)
@@ -108,7 +123,7 @@ def rfmain(X_train_std, Y_train, X_test_std, Y_test):
     predict = model.predict(X_test_std)
     predictprob = model.predict_proba(X_test_std)
     groundtruth = Y_test
-    return groundtruth, predict, predictprob[:,1]
+    return groundtruth, predict, predictprob
 
 def gbdtmain(X_train_std, Y_train, X_test_std, Y_test):
     model = GradientBoostingClassifier(random_state=10)
@@ -116,17 +131,34 @@ def gbdtmain(X_train_std, Y_train, X_test_std, Y_test):
     predict = model.predict(X_test_std)
     predictprob = model.predict_proba(X_test_std)
     groundtruth = Y_test
-    return groundtruth, predict, predictprob[:,1]
+    return groundtruth, predict, predictprob
     
 
-def evaluate(baslineName, X_train_std, Y_train, X_test_std, Y_test):
+def caculateMetrix(groundtruth, predict, baselineName, type='binary'):
+    acc = metrics.accuracy_score(groundtruth, predict)
+    if type == 'binary':
+        precision = metrics.precision_score(groundtruth, predict, zero_division=True )
+        recall = metrics.recall_score(groundtruth, predict,  zero_division=True)
+        f1 = metrics.f1_score(groundtruth, predict, zero_division=True)
+        tn, fp, fn, tp = metrics.confusion_matrix(groundtruth, predict).ravel()
+        npv = tn/(fn+tn+1.4E-45)
+        print(baselineName, '\t\t%f' %acc,'\t%f'% precision,'\t\t%f'%npv,'\t%f'% recall,'\t%f'% f1, '\t', 'tp:',tp,'fp:',fp,'fn:',fn,'tn:',tn)
+    
+    if type == 'multi':
+        precision = metrics.precision_score(groundtruth, predict, average='macro', zero_division=True )
+        recall = metrics.recall_score(groundtruth, predict, average='macro', zero_division=True)
+        f1 = metrics.f1_score(groundtruth, predict, average='macro', zero_division=True)
+        print('%12s'%baselineName, ' \t\t%f '%acc,'\t%f'% precision, '\t\t%f'% recall,'\t%f'% f1)
+
+
+def evaluate(baslineName, X_train_std, Y_train, X_test_std, Y_test, type='binary'):
 
     if baslineName == 'lr':
-        groundtruth, predict, predictprob = lrmain (X_train_std, Y_train, X_test_std, Y_test)
+        groundtruth, predict, predictprob = lrmain (X_train_std, Y_train, X_test_std, Y_test, type=type)
     elif baslineName == 'svm':
         groundtruth, predict, predictprob = svmmain(X_train_std, Y_train, X_test_std, Y_test)
     elif baslineName =='xg':
-        groundtruth, predict, predictprob = xgmain(X_train_std, Y_train, X_test_std, Y_test)
+        groundtruth, predict, predictprob = xgmain(X_train_std, Y_train, X_test_std, Y_test, type=type)
     elif baslineName =='dt':
         groundtruth, predict, predictprob = dtmain(X_train_std, Y_train, X_test_std, Y_test)
     elif baslineName =='rf':
@@ -136,23 +168,28 @@ def evaluate(baslineName, X_train_std, Y_train, X_test_std, Y_test):
     else:
         print('Baseline Name Errror')
 
-    acc = metrics.accuracy_score(groundtruth, predict)
-    precision = metrics.precision_score(groundtruth, predict, zero_division=1 )
-    recall = metrics.recall_score(groundtruth, predict)
-    f1 = metrics.f1_score(groundtruth, predict)
-    auroc = metrics.roc_auc_score(groundtruth, predictprob)
-    auprc = metrics.average_precision_score(groundtruth, predictprob)
-    tn, fp, fn, tp = metrics.confusion_matrix(groundtruth, predict).ravel()
+    caculateMetrix(groundtruth=groundtruth,predict=predict,baselineName=baslineName, type=type)
 
-    npv = tn/(fn+tn+1.4E-45)
+    # acc = metrics.accuracy_score(groundtruth, predict)
+    # precision = metrics.precision_score(groundtruth, predict, zero_division=1 )
+    # recall = metrics.recall_score(groundtruth, predict)
+    # f1 = metrics.f1_score(groundtruth, predict)
+    # auroc = metrics.roc_auc_score(groundtruth, predictprob)
+    # auprc = metrics.average_precision_score(groundtruth, predictprob)
+    # tn, fp, fn, tp = metrics.confusion_matrix(groundtruth, predict).ravel()
+
+    # npv = tn/(fn+tn+1.4E-45)
     
-    print(baslineName, '\t\t%f' %acc,'\t%f'% precision,'\t\t%f'%npv,'\t%f'% recall,'\t%f'% f1, '\t%f'% auroc,'\t%f'% auprc, '\t', 'tp:',tp,'fp:',fp,'fn:',fn,'tn:',tn)
+    # print(baslineName, '\t\t%f' %acc,'\t%f'% precision,'\t\t%f'%npv,'\t%f'% recall,'\t%f'% f1, '\t%f'% auroc,'\t%f'% auprc, '\t', 'tp:',tp,'fp:',fp,'fn:',fn,'tn:',tn)
 
-def run_baseline(X_train, Y_train, X_test, Y_test):
+def run_baseline(X_train, Y_train, X_test, Y_test, type='binary'):
     methods=['lr', 'xg', 'dt', 'rf', 'gbdt']
-    print('baslineName', '\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
+    if type == 'binary':
+        print('baslineName', '\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
+    if type =='multi':
+        print('%12s'%'baslineName', '\t\t', 'accuracy','\t', 'precision-macro \t', 'recall-macro','\t', 'f1-macro')
     for method in methods:
-        evaluate(method, X_train, Y_train, X_test, Y_test)
+        evaluate(method, X_train, Y_train, X_test, Y_test, type=type)
         
     
     
