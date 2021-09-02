@@ -1,3 +1,4 @@
+from esm import model
 import torch
 import esm
 import re
@@ -75,7 +76,7 @@ def get_rep_single_seq(seqid, sequence, model,batch_converter, seqthres=1022):
 #endregion
 
 #region 对多个序列进行embedding
-def get_rep_multi_sequence(sequences, seqthres=1022):
+def get_rep_multi_sequence(sequences, model='esm_msa1b_t12_100M_UR50S', repr_layers=[0, 32, 33], seqthres=1022):
     """[对多个序列进行embedding]
     Args:
         sequences ([DataFrame]): [ sequence info]]
@@ -126,10 +127,12 @@ def get_rep_multi_sequence(sequences, seqthres=1022):
 
 if __name__ =='__main__':
     SEQTHRES = 1022
-   
+    RUNMODEL = {    'ESM-1b'    :'esm1b_t33_650M_UR50S', 
+                'ESM-MSA-1b'    :'esm_msa1b_t12_100M_UR50S'
+                }
     train = pd.read_feather(cfg.DATADIR+'train.feather').iloc[:,:6]
     test = pd.read_feather(cfg.DATADIR+'test.feather').iloc[:,:6]
-    rep0, rep32, rep33 = get_rep_multi_sequence(sequences=train, seqthres=SEQTHRES)
+    rep0, rep32, rep33 = get_rep_multi_sequence(sequences=train, model=RUNMODEL.get('ESM-MSA-1b'),seqthres=SEQTHRES)
 
     rep0.to_feather(cfg.DATADIR + 'train_rep0.feather')
     rep32.to_feather(cfg.DATADIR + 'train_rep32.feather')
