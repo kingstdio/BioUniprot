@@ -92,7 +92,7 @@ def xgmain(X_train_std, Y_train, X_test_std, Y_test, type='binary'):
 
     if type=='binary':
         model = XGBClassifier(objective='binary:logistic', random_state=42, use_label_encoder=False, n_jobs=-2, eval_metric='mlogloss')
-        model.fit(x_train, y_train.ravel(), eval_metric="logloss", eval_set=eval_set, verbose=True)
+        model.fit(x_train, y_train.ravel(), eval_metric="logloss", eval_set=eval_set, verbose=False)
     if type=='multi':
         model = XGBClassifier(
                         min_child_weight=6, 

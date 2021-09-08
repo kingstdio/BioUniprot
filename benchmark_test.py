@@ -192,16 +192,16 @@ if __name__ == '__main__':
 
     # 1. 读入数据
     print('step 1: loading data')
-    train = pd.read_feather(cfg.TRAIN_FEATURE).iloc[:,:5]
+    train = pd.read_feather(cfg.TRAIN_FEATURE)
     test = pd.read_feather(cfg.TEST_FEATURE)
+    train,test= bcommon.load_data_embedding(train=train, test=test, embedding_type=cfg.EMBEDDING_METHOD.get('unirep'))
+    train = train.iloc[:,:7]
 
     dict_ec_label = np.load(cfg.FILE_EC_LABEL_DICT, allow_pickle=True).item() #EC-标签字典
     dict_ec_transfer = np.load(cfg.FILE_TRANSFER_DICT, allow_pickle=True).item() #EC-转移字典
 
     # 2. 获取序列比对结果
 
-    # blast_res = bcommon.getblast(query_fasta=cfg.TEST_FASTA, ref_fasta=cfg.TRAIN_FASTA, results_file=cfg.FILE_BLAST_RESULTS)
-    # blast_res = bcommon.blast_add_label(blast_df=blast_res, trainset=train)
     print('step 2 get blast results')
     blast_res = bcommon.get_blast_prediction(  reference_db=cfg.FILE_BLAST_TRAIN_DB, 
                                                 train_frame=train, 

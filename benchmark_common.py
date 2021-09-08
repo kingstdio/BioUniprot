@@ -143,6 +143,36 @@ def blast_add_label(blast_df, trainset,):
 #endregion
 
 
+def load_data_embedding(train,test,embedding_type):
+
+    if embedding_type==1:   #one-hot
+        return train, test
+
+    if embedding_type==2:   #unirep
+        return train, test
+
+    if embedding_type==3:   #esm0
+        tmptrain= pd.read_feather(cfg.DATADIR+'train_rep0.feather')  
+        tmptest= pd.read_feather(cfg.DATADIR+'test_rep0.feather')
+    
+    if embedding_type ==4:  #esm32
+        tmptrain= pd.read_feather(cfg.DATADIR+'train_rep32.feather')  
+        tmptest= pd.read_feather(cfg.DATADIR+'test_rep32.feather')
+    
+    if embedding_type ==5:  #esm33
+        tmptrain= pd.read_feather(cfg.DATADIR+'train_rep33.feather')  
+        tmptest= pd.read_feather(cfg.DATADIR+'test_rep33.feather')
+
+    train =train.iloc[:,np.r_[0:7]]
+    test =test.iloc[:,np.r_[0:7]]
+    train = train.merge(tmptrain, how='left', on='id')
+    test = test.merge(tmptest, how='left', on='id')
+    train.reset_index(drop=True, inplace=True)
+    test.reset_index(drop=True, inplace=True)
+
+    return train, test
+
+
 def get_blast_prediction(reference_db, train_frame, test_frame, results_file, identity_thres=0.2):
 
     save_table2fasta(dataset=test_frame.iloc[:,np.r_[0,5]], file_out=cfg.TEMPDIR+'test.fasta')

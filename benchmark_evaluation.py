@@ -136,8 +136,9 @@ def integrate_reslults(big_table):
     return big_table
 
 def caculateMetrix(groundtruth, predict, baselineName, type='binary'):
-    acc = metrics.accuracy_score(groundtruth, predict)
+    
     if type == 'binary':
+        acc = metrics.accuracy_score(groundtruth, predict)
         precision = metrics.precision_score(groundtruth, predict, zero_division=True )
         recall = metrics.recall_score(groundtruth, predict,  zero_division=True)
         f1 = metrics.f1_score(groundtruth, predict, zero_division=True)
@@ -145,7 +146,35 @@ def caculateMetrix(groundtruth, predict, baselineName, type='binary'):
         npv = tn/(fn+tn+1.4E-45)
         print(baselineName, '\t\t%f' %acc,'\t%f'% precision,'\t\t%f'%npv,'\t%f'% recall,'\t%f'% f1, '\t', 'tp:',tp,'fp:',fp,'fn:',fn,'tn:',tn)
     
+    if type =='include_unfind':
+        evadf = pd.DataFrame()
+        evadf['g'] = groundtruth
+        evadf['p'] = predict
+
+        evadf_hot = evadf[~evadf.p.isnull()]
+        evadf_cold = evadf[evadf.p.isnull()]
+
+        tp = len(evadf_hot[(evadf_hot.g.astype('int')==1) & (evadf_hot.p.astype('int')==1)])
+        fp = len(evadf_hot[(evadf_hot.g.astype('int')==0) & (evadf_hot.p.astype('int')==1)])        
+        tn = len(evadf_hot[(evadf_hot.g.astype('int')==0) & (evadf_hot.p.astype('int')==0)])
+        fn = len(evadf_hot[(evadf_hot.g.astype('int')==1) & (evadf_hot.p.astype('int')==0)])
+        up = len(evadf_cold[evadf_cold.g==1])
+        un = len(evadf_cold[evadf_cold.g==0])
+        acc = (tp+tn)/(tp+fp+tn+fn+up+un)
+        precision = tp/(tp+fp)
+        npv = tn/(tn+fn)
+        recall = tp/(tp+fn+up)
+        f1=(2*precision*recall)/(precision+recall)
+        print(  baselineName, 
+                '\t\t%f' %acc,
+                '\t%f'% precision,
+                '\t\t%f'%npv,
+                '\t%f'% recall,
+                '\t%f'% f1, '\t', 
+                'tp:',tp,'fp:',fp,'fn:',fn,'tn:',tn, 'up:',up, 'un:',un)
+    
     if type == 'multi':
+        acc = metrics.accuracy_score(groundtruth, predict)
         precision = metrics.precision_score(groundtruth, predict, average='macro', zero_division=True )
         recall = metrics.recall_score(groundtruth, predict, average='macro', zero_division=True)
         f1 = metrics.f1_score(groundtruth, predict, average='macro', zero_division=True)
@@ -166,9 +195,9 @@ def evalueate_performance(evalutation_table):
 
     for k,v in ev_isenzyme.items():
         caculateMetrix( groundtruth=evalutation_table.isenzyme_groundtruth.astype('int'), 
-                        predict=evalutation_table[v].fillna('1').astype('int'), 
+                        predict=evalutation_table[v], 
                         baselineName=k, 
-                        type='binary')
+                        type='include_unfind')
 
 
     print('\n\n2. EC prediction evalueation metrics')

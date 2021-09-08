@@ -36,7 +36,12 @@ FILE_PRIAM_RESULTS = RESULTSDIR + R'priam/PRIAM_20210819134344/ANNOTATION/sequen
 FILE_EVL_RESULTS = RESULTSDIR + r'evaluation_table.xlsx'
 
 UPDATE_MODEL = True #强制模型更新标志
-
+EMBEDDING_METHOD={  'one-hot':1, 
+                    'unirep':2, 
+                    'esm0':3, 
+                    'esm32':4, 
+                    'esm33':5
+                }
 
 
 
@@ -62,6 +67,17 @@ VALIDATION_RATE = 0.3 #模型训练时验证集的比例
 
 
 
-
-BLAST_TABLE_HEAD = ['id', 'sseqid', 'pident', 'length', 'mismatch', 'gapopen', 'qstart', 'qend', 'sstart', 'send',
-                    'evalue', 'bitscore']
+#
+BLAST_TABLE_HEAD = ['id', 
+                    'sseqid', 
+                    'pident', 
+                    'length', 
+                    'mismatch', 
+                    'gapopen', 
+                    'qstart', 
+                    'qend', 
+                    'sstart', 
+                    'send',
+                    'evalue', 
+                    'bitscore'
+                    ]

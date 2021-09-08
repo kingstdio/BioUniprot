@@ -1,3 +1,4 @@
+from json import load
 from pickle import FALSE
 from tasks.task1.function import table2fasta
 import pandas as pd
@@ -50,14 +51,15 @@ def get_ec_train_set(train_data, ec_label_dict):
     """
     if cfg.TRAIN_USE_ONLY_ENZYME:
         train_data = train_data[train_data.isemzyme] #仅选用酶数据
-    if cfg.TRAIN_USE_ONLY_SINGLE_FUNCTION:
-        train_data = train_data[train_data.functionCounts ==1] #仅选用单功能酶数据
+    # if cfg.TRAIN_USE_ONLY_SINGLE_FUNCTION:
+    train_data = train_data[train_data.functionCounts ==1] #仅选用单功能酶数据
     
     train_data = train_data[(train_data.ec_specific_level >= cfg.TRAIN_USE_SPCIFIC_EC_LEVEL) |(train_data.ec_specific_level ==0)]
-    
-    train_data['ec_label'] = train_data.ec_number.apply(lambda x: ec_label_dict.get(x))
     train_data.reset_index(drop=True, inplace=True)
-    train_X = train_data.iloc[:, 7:1907]
+    train_data.insert(loc=1, column='ec_label', value=train_data.ec_number.apply(lambda x: ec_label_dict.get(x)))
+    # train_data['ec_label'] = train_data.ec_number.apply(lambda x: ec_label_dict.get(x))
+
+    train_X = train_data.iloc[:, 8:]
     train_Y =train_data['ec_label']
     return train_X, pd.DataFrame(train_Y)
 
@@ -131,7 +133,7 @@ def train_howmany_enzyme(data_x, data_y, model_file, vali_ratio=0.3, force_model
                             )
         print("-" * 100)
         print("几功能酶xgboost模型：", model)
-        model.fit(x_train, y_train, eval_metric="mlogloss", eval_set=eval_set, verbose=True)
+        model.fit(x_train, y_train, eval_metric="mlogloss", eval_set=eval_set, verbose=False)
         # # 打印重要性指数
         bcommon.importance_features_top(model, x_train, topN=50)
         # 保存模型
@@ -169,6 +171,10 @@ def train_ec_slice(trainX, trainY, modelPath, force_model_update=False):
     print('train finished')
 #endregion
 
+
+
+
+
 if __name__ =="__main__":
 
     # 1. 读入数据
@@ -176,7 +182,9 @@ if __name__ =="__main__":
     train = pd.read_feather(cfg.TRAIN_FEATURE)
     test = pd.read_feather(cfg.TEST_FEATURE)
 
-    # 2. 写入fasta文件
+    train,test= bcommon.load_data_embedding(train=train, test=test, embedding_type=cfg.EMBEDDING_METHOD.get('unirep'))
+
+    # # 2. 写入fasta文件
 
     table2fasta(table=train,file_out=cfg.TRAIN_FASTA)
     table2fasta(table=test, file_out=cfg.TEST_FASTA)
