@@ -8,6 +8,7 @@ from sklearn.svm import SVC
 from sklearn import tree
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.neighbors import KNeighborsClassifier
 import xgboost
 from xgboost import XGBClassifier
 from tqdm import tqdm
@@ -69,11 +70,20 @@ def lrmain(X_train_std, Y_train, X_test_std, Y_test, type='binary'):
                                             solver = 'lbfgs',
                                             multi_class='auto', 
                                             n_jobs=-2,
-                                            verbose=False
+                                            verbose=False,
+                                            max_iter=200
                                         )
     logreg.fit(X_train_std, Y_train)
     predict = logreg.predict(X_test_std)
     lrpredpro = logreg.predict_proba(X_test_std)
+    groundtruth = Y_test
+    return groundtruth, predict, lrpredpro
+
+def knnmain(X_train_std, Y_train, X_test_std, Y_test, type='binary'):
+    knn=KNeighborsClassifier(n_neighbors=5, n_jobs=-2)
+    knn.fit(X_train_std, Y_train)
+    predict = knn.predict(X_test_std)
+    lrpredpro = knn.predict_proba(X_test_std)
     groundtruth = Y_test
     return groundtruth, predict, lrpredpro
 
@@ -91,7 +101,16 @@ def xgmain(X_train_std, Y_train, X_test_std, Y_test, type='binary'):
     eval_set = [(x_train, y_train), (x_vali, y_vali)]
 
     if type=='binary':
-        model = XGBClassifier(objective='binary:logistic', random_state=42, use_label_encoder=False, n_jobs=-2, eval_metric='mlogloss')
+        model = XGBClassifier(
+                                objective='binary:logistic', 
+                                random_state=15, 
+                                use_label_encoder=False, 
+                                n_jobs=-1, 
+                                eval_metric='mlogloss',
+                                min_child_weight=15, 
+                                max_depth=15, 
+                                n_estimators=300
+                            )
         model.fit(x_train, y_train.ravel(), eval_metric="logloss", eval_set=eval_set, verbose=False)
     if type=='multi':
         model = XGBClassifier(
@@ -100,7 +119,7 @@ def xgmain(X_train_std, Y_train, X_test_std, Y_test, type='binary'):
                         objective='multi:softmax', 
                         num_class=len(set(Y_train)), 
                         use_label_encoder=False,
-                        n_estimators=110
+                        n_estimators=120
                     )
         model.fit(x_train, y_train, eval_metric="mlogloss", eval_set=eval_set, verbose=False)
     
@@ -165,6 +184,8 @@ def evaluate(baslineName, X_train_std, Y_train, X_test_std, Y_test, type='binary
         groundtruth, predict, predictprob = rfmain(X_train_std, Y_train, X_test_std, Y_test)
     elif baslineName =='gbdt':
         groundtruth, predict, predictprob = gbdtmain(X_train_std, Y_train, X_test_std, Y_test)
+    elif baslineName =='knn':
+        groundtruth, predict, predictprob = knnmain(X_train_std, Y_train, X_test_std, Y_test)
     else:
         print('Baseline Name Errror')
 
@@ -183,9 +204,9 @@ def evaluate(baslineName, X_train_std, Y_train, X_test_std, Y_test, type='binary
     # print(baslineName, '\t\t%f' %acc,'\t%f'% precision,'\t\t%f'%npv,'\t%f'% recall,'\t%f'% f1, '\t%f'% auroc,'\t%f'% auprc, '\t', 'tp:',tp,'fp:',fp,'fn:',fn,'tn:',tn)
 
 def run_baseline(X_train, Y_train, X_test, Y_test, type='binary'):
-    methods=['lr', 'xg', 'dt', 'rf', 'gbdt']
+    methods=['knn','lr', 'xg', 'dt', 'rf', 'gbdt']
     if type == 'binary':
-        print('baslineName', '\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', 'auroc','\t\t', 'auprc', '\t\t confusion Matrix')
+        print('baslineName', '\t', 'accuracy','\t', 'precision(PPV) \t NPV \t\t', 'recall','\t', 'f1', '\t\t', '\t\t confusion Matrix')
     if type =='multi':
         print('%12s'%'baslineName', '\t\t', 'accuracy','\t', 'precision-macro \t', 'recall-macro','\t', 'f1-macro')
     for method in methods:

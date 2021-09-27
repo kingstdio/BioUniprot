@@ -37,7 +37,7 @@ def get_howmany_Enzyme(querydata, model_file):
 # endregion
 
 # region 获取slice预测结果
-def get_slice_res(slice_query_file, model_path, res_file):
+def get_slice_res(slice_query_file, model_path, dict_ec_label,test_set, res_file):
     """[获取slice预测结果]
 
     Args:
@@ -52,7 +52,14 @@ def get_slice_res(slice_query_file, model_path, res_file):
     print(cmd)
     os.system(cmd)
     result_slice = pd.read_csv(res_file, header=None, skiprows=1, sep=' ')
-    return result_slice
+
+        # 5.3 对预测结果排序
+    slice_pred_rank, slice_pred_prob = sort_results(result_slice)
+
+    # 5.4 将结果翻译成EC号
+    slice_pred_ec = translate_slice_pred(slice_pred=slice_pred_rank, ec2label_dict = dict_ec_label, test_set=test_set)
+
+    return slice_pred_ec
 
 
 # endregion
@@ -230,13 +237,9 @@ if __name__ == '__main__':
                                 ec_label_dict=dict_ec_label
                             )
     # 5.2 获得预测结果
-    slice_pred = get_slice_res(slice_query_file=cfg.FILE_SLICE_TESTX, model_path= cfg.MODELDIR, res_file=cfg.FILE_SLICE_RESULTS)
-
-    # 5.3 对预测结果排序
-    slice_pred_rank, slice_pred_prob = sort_results(slice_pred)
-
-    # 5.4 将结果翻译成EC号
-    slice_pred_ec = translate_slice_pred(slice_pred=slice_pred_rank, ec2label_dict = dict_ec_label, test_set=test)
+    # slice_pred_ec = get_slice_res(slice_query_file=cfg.FILE_SLICE_TESTX, model_path= cfg.MODELDIR, dict_ec_label=dict_ec_label, test_set=test,  res_file=cfg.FILE_SLICE_RESULTS)
+    slice_pred_ec = get_slice_res(slice_query_file=cfg.DATADIR+'slice_test_x_esm33.txt', model_path= cfg.MODELDIR+'/slice_esm33', dict_ec_label=dict_ec_label, test_set=test,  res_file=cfg.FILE_SLICE_RESULTS)
+    
     slice_pred_ec['isEnzyme_pred_xg'] = isEnzyme_pred
     slice_pred_ec['functionCounts_pred_xg'] = howmany_Enzyme_pred
     slice_pred_ec = slice_pred_ec.merge(blast_res, on='id', how='left')

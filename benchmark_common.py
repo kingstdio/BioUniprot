@@ -23,7 +23,8 @@ def prepare_slice_file(x_data, y_data, x_file, y_file, ec_label_dict):
          to_file_matrix(file=x_file, ds=x_data.round(cfg.SAMPLING_BIT), col_num=cfg.FEATURE_NUM, stype='feature')
 
     if (os.path.exists(y_file) == False) or (cfg.UPDATE_MODEL ==True):
-        y_data['tags'] = 1
+        with pd.option_context('mode.chained_assignment', None): 
+            y_data['tags'] = 1
         to_file_matrix(
             file=y_file,
             ds=y_data,

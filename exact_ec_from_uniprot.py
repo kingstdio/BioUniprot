@@ -35,28 +35,32 @@ def read_file_from_gzip(file_in_path, file_out_path, extract_type):
     counter = 0
     saver = 0 
     reslist = []
+    file_write_obj = open(file_out_path,'w')
     #reslist.append(['id', 'description', 'seq'])
     with gzip.open(file_in_path, "rt") as handle:
-        
+        file_write_obj.writelines('\t'.join(table_head))
+        file_write_obj.writelines('\n')
         for record in tqdm( SeqIO.parse(handle, 'swiss')):
             res = process_record(record, extract_type= extract_type)
             counter+=1
-            # if counter %10000==0:
-            #     print('lines:{0}/{1}'.format(saver, counter))
+            if counter %10==0:
+                file_write_obj.flush()
+            if saver%100000==0:
+                print(saver)
             if len(res) >0:
-                reslist.append(res)
                 saver +=1
+                file_write_obj.writelines('\t'.join(map(str,res)))
+                file_write_obj.writelines('\n')
             else:
                 continue
 
-    result = pd.DataFrame(reslist, columns= table_head)
-    result.date_integraged = pd.to_datetime(result['date_integraged'])
-    result.date_sequence_update = pd.to_datetime(result['date_sequence_update'])
-    result.date_annotation_update = pd.to_datetime(result['date_annotation_update'])
-
-    result.sort_values(by='date_integraged', inplace=True)
-
-    result.to_csv(file_out_path, sep="\t", index=0, header=0 )
+    file_write_obj.close()
+    # result = pd.DataFrame(reslist, columns= table_head)
+    # result.date_integraged = pd.to_datetime(result['date_integraged'])
+    # result.date_sequence_update = pd.to_datetime(result['date_sequence_update'])
+    # result.date_annotation_update = pd.to_datetime(result['date_annotation_update'])
+    # result.sort_values(by='date_integraged', inplace=True)
+    # result.to_csv(file_out_path, sep="\t", index=0, header=0 )
  
  #endregion
 
@@ -149,8 +153,11 @@ def split_time_half(data):
 
 if __name__ =="__main__":
     start =  time.process_time()
-    in_filepath = r'/home/shizhenkun/codebase/BioUniprot/data/201802/uniprot_sprot.dat.gz'
-    out_filepath = r'/home/shizhenkun/codebase/BioUniprot/data/201802/sprot_full.tsv'
+    # in_filepath = r'/home/shizhenkun/codebase/BioUniprot/data/201802/uniprot_sprot.dat.gz'
+    # out_filepath = r'/home/shizhenkun/codebase/BioUniprot/data/201802/sprot_full.tsv'
+
+    in_filepath = r'/public/data/uniprot/uniprot_trembl.dat.gz'
+    out_filepath = r'/home/shizhenkun/codebase/BioUniprot/data/trembl/uniprot_trembl.tsv'
     extract_type ='full'
     read_file_from_gzip(file_in_path=in_filepath, file_out_path=out_filepath, extract_type=extract_type)
     end =  time.process_time()

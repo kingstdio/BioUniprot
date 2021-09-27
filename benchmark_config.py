@@ -22,10 +22,10 @@ ISENZYME_MODEL = MODELDIR+'/isenzyme.model'
 HOWMANY_MODEL = MODELDIR+'/howmany_enzyme.model'
 
 
-
 FILE_BLAST_RESULTS = RESULTSDIR + r'test_blast_res.tsv'
 FILE_BLAST_ISENAYME_RESULTS = RESULTSDIR +r'isEnzyme_blast_results.tsv'
 FILE_BLAST_EC_RESULTS = RESULTSDIR +r'ec_blast_results.tsv'
+FILE_SLICE_ISENZYME_RESULTS = RESULTSDIR + 'isEnzyme_slice_results.tsv'
 FILE_SLICE_RESULTS = RESULTSDIR + 'slice_results.txt'
 FILE_INTE_RESULTS  =   RESULTSDIR+'slice_pred.tsv'
 FILE_DEEPEC_RESULTS = RESULTSDIR + r'deepec/DeepEC_Result.txt'
@@ -64,7 +64,6 @@ TRAIN_BLAST_IDENTITY_THRES = 40                  #比对结果identity阈值
 TRAIN_ISENZYME_LEARNING_STEPS = 100             #是否是酶学习次数
 TRAIN_HOWMANY_ENZYME_LEARNING_STEPS = 100        #几功能酶学习次数
 VALIDATION_RATE = 0.3 #模型训练时验证集的比例    
-
 
 
 #
