@@ -67,12 +67,13 @@ def dna_onehot(Xdna):
 
 def lrmain(X_train_std, Y_train, X_test_std, Y_test, type='binary'):
     logreg = linear_model.LogisticRegression(
-                                            solver = 'lbfgs',
-                                            multi_class='auto', 
-                                            n_jobs=-2,
+                                            solver = 'liblinear',
+                                            multi_class='auto',
                                             verbose=False,
-                                            max_iter=200
+                                            max_iter=100
                                         )
+    # sc = StandardScaler()
+    # X_train_std = sc.fit_transform(X_train_std)
     logreg.fit(X_train_std, Y_train)
     predict = logreg.predict(X_test_std)
     lrpredpro = logreg.predict_proba(X_test_std)
@@ -234,30 +235,30 @@ def static_interval(data, span):
         
 
         
-# def getblast(train, test):
+def getblast(train, test):
     
-#     table2fasta(train, '/tmp/train.fasta')
-#     table2fasta(test, '/tmp/test.fasta')
+    table2fasta(train, '/tmp/train.fasta')
+    table2fasta(test, '/tmp/test.fasta')
     
-#     cmd1 = r'diamond makedb --in /tmp/train.fasta -d /tmp/train.dmnd'
-#     cmd2 = r'diamond blastp -d /tmp/train.dmnd  -q  /tmp/test.fasta -o /tmp/test_fasta_results.tsv -b5 -c1 -k 1'
-#     cmd3 = r'rm -rf /tmp/*.fasta /tmp/*.dmnd /tmp/*.tsv'
-#     print(cmd1)
-#     os.system(cmd1)
-#     print(cmd2)
-#     os.system(cmd2)
-#     res_data = pd.read_csv('/tmp/test_fasta_results.tsv', sep='\t', names=['id', 'sseqid', 'pident', 'length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore'])
-#     os.system(cmd3)
-#     return res_data
-
-def getblast_fasta(trainfasta, testfasta):
-    
-    cmd1 = r'diamond makedb --in {0} -d /tmp/train.dmnd'.format(trainfasta)
-    cmd2 = r'diamond blastp -d /tmp/train.dmnd  -q  {0} -o /tmp/test_fasta_results.tsv -b5 -c1 -k 1'.format(testfasta)
+    cmd1 = r'diamond makedb --in /tmp/train.fasta -d /tmp/train.dmnd'
+    cmd2 = r'diamond blastp -d /tmp/train.dmnd  -q  /tmp/test.fasta -o /tmp/test_fasta_results.tsv -b5 -c1 -k 1'
     cmd3 = r'rm -rf /tmp/*.fasta /tmp/*.dmnd /tmp/*.tsv'
     print(cmd1)
     os.system(cmd1)
     print(cmd2)
+    os.system(cmd2)
+    res_data = pd.read_csv('/tmp/test_fasta_results.tsv', sep='\t', names=['id', 'sseqid', 'pident', 'length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore'])
+    os.system(cmd3)
+    return res_data
+
+def getblast_fasta(trainfasta, testfasta):
+    
+    cmd1 = r'diamond makedb --in {0} -d /tmp/train.dmnd --quiet'.format(trainfasta)
+    cmd2 = r'diamond blastp -d /tmp/train.dmnd  -q  {0} -o /tmp/test_fasta_results.tsv -b8 -c1 -k 1 --quiet'.format(testfasta)
+    cmd3 = r'rm -rf /tmp/*.fasta /tmp/*.dmnd /tmp/*.tsv'
+    # print(cmd1)
+    os.system(cmd1)
+    # print(cmd2)
     os.system(cmd2)
     res_data = pd.read_csv('/tmp/test_fasta_results.tsv', sep='\t', names=['id', 'sseqid', 'pident', 'length','mismatch','gapopen','qstart','qend','sstart','send','evalue','bitscore'])
     os.system(cmd3)
