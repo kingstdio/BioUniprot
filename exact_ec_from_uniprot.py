@@ -4,8 +4,6 @@ import numpy as np
 import pandas as pd
 import re
 from tqdm import tqdm
-from multiprocessing import Pool
-from multiprocessing.dummy import Pool as ThreadPool
 import time
 import random
 import tools.funclib as funclib
